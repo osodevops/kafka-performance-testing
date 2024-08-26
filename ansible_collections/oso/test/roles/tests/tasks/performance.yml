@@ -1,0 +1,25 @@
+---
+
+# add_host tasks are executed only once - hence we loop over "perf_hosts" instead of using the ansible_hostname
+- name: Import producers to producer group
+  ansible.builtin.add_host:
+    name: '{{ item.key }}'
+    groups: producers
+  loop: "{{ lookup('ansible.builtin.dict', perf_hosts, wantlist=True) }}"
+  when: item.value.producers is defined
+
+- name: Import consumers to consumer group
+  ansible.builtin.add_host:
+    name: '{{ item.key }}'
+    groups: consumers
+  loop: "{{ lookup('ansible.builtin.dict', perf_hosts, wantlist=True) }}"
+  when: item.value.consumers is defined
+
+- name: Include ssl tasks
+  include_tasks: performance_ssl.yml
+  when:
+    - ssl_enabled|bool
+
+- name: Include non-ssl tasks
+  include_tasks: performance_no_ssl.yml
+  when: not ssl_enabled|bool

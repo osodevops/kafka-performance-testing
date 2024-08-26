@@ -1,0 +1,10 @@
+---
+
+#### Setting for connection to remote hosts ####
+ansible_connection: ssh
+ansible_ssh_user: ansible
+ansible_user: ansible
+ansible_become: true
+
+# Cluster names
+kafka_broker_cluster_name: TODO

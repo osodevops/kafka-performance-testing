@@ -1,0 +1,35 @@
+---
+
+- name: Process variables
+  hosts: all
+  gather_facts: false
+  tags: test
+  tasks:
+    - name: Populate service facts
+      service_facts:
+
+    - name: Gather OS Facts
+      setup:
+        gather_subset:
+          - '!all'
+          - '!any'
+          - user
+          - os_family
+          - hardware
+      tags: always
+
+- name: Test topic creation, produce and consume
+  hosts: all
+  vars:
+    kafka_user: XXX # Amended to match the broker user in the test environment
+    kafka_password: XXX # Amended to match the broker password in the test environment
+    ssl_enabled: false
+    kafka_broker:
+      hosts:
+        - localhost:9093 # Amended to match the broker host in the test environment
+  gather_facts: false
+  tags: test, produce_consume
+  tasks:
+    - import_role:
+        name: tests
+        tasks_from: produce_consume.yml

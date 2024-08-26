@@ -1,0 +1,3 @@
+---
+
+- import_playbook: produce_consume.yml

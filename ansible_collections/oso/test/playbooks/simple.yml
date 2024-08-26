@@ -1,0 +1,51 @@
+---
+
+- name: Process variables
+  hosts: all
+  gather_facts: false
+  tags: test
+  tasks:
+    - name: Gather OS Facts
+      setup:
+        gather_subset:
+          - '!all'
+          - '!any'
+          - user
+          - os_family
+          - hardware
+      tags: always
+
+- name: Execute performance test
+  hosts: all
+  gather_facts: false
+  tags: test, performance
+  vars:
+    perf_topic_name: platform-test-0
+    perf_parallel: true
+    perf_report_file: perf-simple.log
+    perf_topic_partitions: 10
+    perf_replication_factor: 5
+    perf_linger_ms: 10
+    perf_buffer_memory: 67108864
+    perf_throughput: -1
+    perf_record_size: 2048
+    perf_num_records: 1000000
+    perf_batch_size: 64000
+    ssl_enabled: true
+
+    kafka_user: XXX # Amended to match the broker user in the test environment
+    kafka_password: XXX # Amended to match the broker password in the test environment
+
+    kafka_broker:
+      hosts:
+        - localhost:9093 # Amended to match the broker host in the test environment
+
+    perf_hosts:
+      localhost:
+        producers: 3
+        consumers: 1
+        c_groups: [ 'perf-simple']
+  tasks:
+    - import_role:
+        name: tests
+        tasks_from: performance.yml

@@ -1,0 +1,146 @@
+---
+
+- name: test handler
+  block:
+    - name: Create blank report file
+      local_action: copy dest="./{{ perf_report_file }}" content="Report start"
+      run_once: True
+
+    - name: create temporary perf.client.properties
+      copy:
+        dest: "./perf.client.properties"
+        content: |
+          security.properties
+          security.protocol=SASL_SSL
+          sasl.mechanism=PLAIN
+          ssl.endpoint.identification.algorithm=
+          sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required \
+          username=\"{{ kafka_user }}\" \
+          password=\"{{ kafka_password }}\";
+          default.api.timeout.ms=20000
+          request.timeout.ms=20000
+
+        mode: 0750
+
+    - name: Create test topic
+      shell: |
+        {{ binary_base_path }}/bin/kafka-topics --bootstrap-server {{ kafka_broker.hosts[0] }} \
+          --create --topic {{ perf_topic_name }} --if-not-exists --replication-factor {{ perf_replication_factor }} --partitions {{ perf_topic_partitions }} --command-config ./perf.client.properties
+      register: urp_topics
+      # stdout_lines will have topics with URPs and stderr has WARN and ERROR level logs
+      until: urp_topics.stdout_lines|length == 0 and 'ERROR' not in urp_topics.stderr
+      retries: 15
+      delay: 5
+      ignore_errors: true
+      changed_when: false
+      check_mode: false
+      when: "{{ \"producers\" in group_names }}"
+
+    - name: Produce test data
+      shell: |
+        {{ binary_base_path }}/bin/kafka-producer-perf-test --topic {{ perf_topic_name }} \
+        --producer.config ./perf.client.properties --record-size {{ perf_record_size }} \
+        --throughput {{ perf_throughput }} --num-records {{ perf_num_records }} \
+        --producer-props bootstrap.servers={{ kafka_broker.hosts[0] }} \
+        acks=0 linger.ms={{ perf_linger_ms }} buffer.memory={{ perf_buffer_memory }} batch.size={{ perf_batch_size }} compression.type=zstd
+      changed_when: false
+      check_mode: false
+      register: producer_data
+      async: 80000
+      poll: 0
+      when: "{{ \"producers\" in group_names }}"
+      with_sequence: start=0 count="{{perf_hosts[inventory_hostname].producers}}"
+
+    - name: Wait for production - series
+      async_status:
+        jid: "{{ item.ansible_job_id }}"
+      register: production_job_result_series
+      until: production_job_result_series.finished
+      retries: 100
+      delay: 10
+      loop: "{{ producer_data.results }}"
+      when: ({{ "producers" in group_names }}) and ({{ perf_parallel is false }})
+
+    - name: Consume test data
+      shell: |
+        {{ binary_base_path }}/bin/kafka-consumer-perf-test --bootstrap-server {{ kafka_broker.hosts[0] }} \
+        --consumer.config ./perf.client.properties --topic {{ perf_topic_name }} \
+        --messages {{ perf_num_records }} --group {{ perf_hosts[inventory_hostname].c_groups[item|int] }} \
+        --timeout 80000
+      changed_when: false
+      check_mode: false
+      register: consumer_data
+      async: 80000
+      poll: 0
+      when: "{{ \"consumers\" in group_names }}"
+      with_sequence: start=0 count="{{ perf_hosts[inventory_hostname].consumers }}"
+
+    - name: Wait for production - simultaneous
+      async_status:
+        jid: "{{ item.ansible_job_id }}"
+      register: production_job_result_parallel
+      until: production_job_result_parallel.finished
+      retries: 100
+      delay: 10
+      loop: "{{ producer_data.results }}"
+      when: ({{ "producers" in group_names }}) and ({{ perf_parallel is true }})
+
+    - name: Wait for consumption
+      async_status:
+        jid: "{{ item.ansible_job_id }}"
+      register: consumption_job_result
+      until: consumption_job_result.finished
+      retries: 100
+      delay: 10
+      loop: "{{ consumer_data.results }}"
+      when: "{{ \"consumers\" in group_names }}"
+
+    - name: Write producer output to file - series
+      become: false
+      local_action:
+        module: lineinfile
+        create: True
+        insertafter: "EOF"
+        path: "./{{ perf_report_file }}"
+        line: "Producer {{ item.item.item }} (throughput={{ perf_throughput }}, num-records={{ perf_num_records }}, record-size={{ perf_record_size }}, batch.size={{ perf_batch_size }}, acks=all, linger.ms={{ perf_linger_ms }}, buffer.memory={{ perf_buffer_memory }}, compression.type=zstd)\n{{ item.stdout }}"
+      loop: "{{ production_job_result_series.results }}"
+      when:  ({{ "producers" in group_names }}) and ({{ perf_parallel is false}})
+
+    - name: Write producer output to file - parallel
+      become: false
+      become_user: ansible
+      local_action:
+        module: lineinfile
+        create: True
+        insertafter: "EOF"
+        path: "./{{ perf_report_file }}"
+        line: "Producer {{ item.item.item }} (throughput={{ perf_throughput }}, num-records={{ perf_num_records }}, record-size={{ perf_record_size }}, batch.size={{ perf_batch_size }}, acks=all, linger.ms={{ perf_linger_ms }}, buffer.memory={{ perf_buffer_memory }}, compression.type=zstd)\n{{ item.stdout }}"
+      loop: "{{ production_job_result_parallel.results }}"
+      when:  ({{ "producers" in group_names }}) and ({{ perf_parallel is true}})
+
+    - name: Write consumer output to file
+      become: false
+      become_user: ansible
+      local_action:
+        module: lineinfile
+        create: True
+        insertafter: "EOF"
+        path: "./{{ perf_report_file }}"
+        line: "Consumer {{ item.item.item }}\n{{ item.stdout }}\n"
+      loop: "{{ consumption_job_result.results }}"
+      when: "{{ \"consumers\" in group_names }}"
+
+  always:
+    - name: Delete test topic
+      shell: |
+        {{ binary_base_path }}/bin/kafka-topics --bootstrap-server {{ kafka_broker.hosts[0] }} \
+          --delete --topic {{ perf_topic_name }} --if-exists --command-config ./perf.client.properties
+      register: urp_topics
+      # stdout_lines will have topics with URPs and stderr has WARN and ERROR level logs
+      until: urp_topics.stdout_lines|length == 0 and 'ERROR' not in urp_topics.stderr
+      retries: 15
+      delay: 5
+      ignore_errors: true
+      changed_when: false
+      check_mode: false
+      when: "{{ \"producers\" in group_names }}"

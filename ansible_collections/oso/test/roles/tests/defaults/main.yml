@@ -1,0 +1,38 @@
+---
+# Tailor and copy this block of definitions to a "vars" definition in the relevant "test" collection playbook
+
+perf_topic_name: platform-test
+perf_topic_partitions: 1
+perf_replication_factor: 1
+perf_linger_ms: 10
+perf_buffer_memory: 67108864
+perf_throughput: -1
+perf_report_file: "default-perftest.log"
+perf_parallel: true
+
+perf_record_size: 1024
+#perf_record_size: 2048
+#perf_record_size: 5120
+#perf_record_size: 10240
+
+perf_num_records: 1000000
+#perf_num_records: 5000000
+#perf_num_records: 10000000
+
+perf_batch_size: 16000
+#perf_batch_size: 64000
+#perf_batch_size: 128000
+#perf_batch_size: 256000
+#perf_batch_size: 512000
+
+# Internal mechanics
+perf:
+  tmp_ssl_location: "/tmp/var/ssl/ansible"
+  bootstrap_server: "{{ groups['kafka_broker'][0] }}"
+
+# Should be overridden by secrets
+perf_truststore_password: a_dummy_value
+perf_keystore_password: a_dummy_value
+
+# Defaults
+binary_base_path: "/usr/local/"

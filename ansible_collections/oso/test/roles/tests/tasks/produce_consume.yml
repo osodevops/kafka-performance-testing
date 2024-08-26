@@ -1,0 +1,72 @@
+---
+- name: create temporary client.properties
+  copy:
+    dest: "./client.properties"
+    content: |
+      security.protocol=SASL_SSL
+      sasl.mechanism=PLAIN
+      ssl.endpoint.identification.algorithm=
+      sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required \
+      username=\"{{ kafka_user }}\" \
+      password=\"{{ kafka_password }}\";
+    mode: 0750
+    when:
+      - ssl_enabled|bool
+
+- name: create blank client.properties
+  copy:
+    dest: "./client.properties"
+    content: ""
+    mode: 0750
+  when: not ssl_enabled|bool
+
+- name: Create test topic
+  shell: |
+    {{ binary_base_path }}/bin/kafka-topics --bootstrap-server {{ kafka_broker.hosts[0] }} \
+      --create --topic platform-test --if-not-exists --replication-factor 1 --partitions 1 --command-config ./client.properties
+  register: urp_topics
+  # stdout_lines will have topics with URPs and stderr has WARN and ERROR level logs
+  until: urp_topics.stdout_lines|length == 0 and 'ERROR' not in urp_topics.stderr
+  retries: 15
+  delay: 5
+  ignore_errors: true
+  changed_when: false
+  check_mode: false
+  run_once: true
+      
+- name: Produce test data
+  shell: |
+    seq 10 | {{ binary_base_path }}/bin/kafka-console-producer --bootstrap-server {{ kafka_broker.hosts[0] }} \
+        --topic platform-test --producer.config ./client.properties
+  changed_when: false
+  check_mode: false
+  run_once: true
+
+- name: Consume test data
+  shell: |
+    timeout 10 {{ binary_base_path }}/bin/kafka-console-consumer --bootstrap-server {{ kafka_broker.hosts[0] }} \
+        --consumer.config ./client.properties \
+        --from-beginning --topic platform-test
+  register: output
+  changed_when: false
+  ignore_errors: true
+  failed_when: output.rc != 124
+  check_mode: false
+  run_once: true
+
+- name: Assert consumed data is correct
+  assert:
+    that:
+      - "'1\n2\n3\n4\n5\n6\n7\n8\n9\n10' in output.stdout"
+    fail_msg: "sequence data is not in output"
+    quiet: true
+
+# Requires delete.topic.enable=true
+- name: Delete test topic
+  shell: |
+    {{ binary_base_path }}/bin/kafka-topics --bootstrap-server {{ kafka_broker.hosts[0] }} \
+      --delete --topic platform-test --command-config ./client.properties
+  ignore_errors: true
+  changed_when: false
+  check_mode: false
+  run_once: true
