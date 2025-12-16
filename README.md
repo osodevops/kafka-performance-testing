@@ -181,6 +181,7 @@ ansible-playbook -i inventories/local oso.test.simple
 - [Getting Started Guide](docs/GETTING_STARTED.md) - Detailed setup instructions
 - [Running Tests](docs/RUNNING_TESTS.md) - Step-by-step guide to running all test scenarios
 - [Understanding Results](docs/UNDERSTANDING_RESULTS.md) - Complete guide to metrics, charts, and recommendations
+- [Offline Installation](docs/OFFLINE_INSTALLATION.md) - Air-gapped environment setup
 - [Configuration Reference](docs/CONFIGURATION.md) - All variables and options
 - [Architecture Overview](docs/ARCHITECTURE.md) - How the system works
 - [Test Scenarios](docs/SCENARIOS.md) - Detailed scenario descriptions

@@ -69,3 +69,6 @@ Thumbs.db
 secrets.yml
 vault.yml
 **/credentials.json
+
+# Offline packages (downloaded for air-gapped installation)
+offline_packages/
