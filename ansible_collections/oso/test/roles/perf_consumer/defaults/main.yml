@@ -1,0 +1,29 @@
+---
+# Consumer Performance Role - Default Variables
+
+# Test parameters
+perf_num_messages: 1000000
+perf_consumer_timeout: 80000  # ms
+
+# Consumer configuration
+perf_fetch_min_bytes: 10240
+perf_fetch_max_wait_ms: 100
+perf_max_poll_records: 500
+perf_receive_buffer_bytes: 1048576  # 1MB
+perf_consumer_group: "perf-consumer-group"
+
+# Execution settings
+perf_parallel: true
+consumer_async_timeout: 80000
+consumer_poll_interval: 0
+
+# Scenario identification
+scenario_name: "default"
+
+# Inherited from setup_environment (should be set)
+# kafka_broker
+# perf_topic_name
+# ssl_enabled
+# binary_base_path
+# raw_logs_dir
+# test_run_timestamp

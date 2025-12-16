@@ -1,0 +1,165 @@
+---
+# Setup Environment Role - Main Tasks
+
+- name: Create results directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ raw_logs_dir }}"
+    - "{{ parsed_data_dir }}"
+    - "{{ reports_dir }}"
+  delegate_to: localhost
+  run_once: true
+  tags:
+    - setup
+    - directories
+
+- name: Verify Kafka CLI tools are available
+  ansible.builtin.stat:
+    path: "{{ binary_base_path }}/bin/kafka-producer-perf-test.sh"
+  register: kafka_tools_check
+  failed_when: not kafka_tools_check.stat.exists
+  tags:
+    - setup
+    - validation
+
+- name: Verify Kafka consumer perf tool is available
+  ansible.builtin.stat:
+    path: "{{ binary_base_path }}/bin/kafka-consumer-perf-test.sh"
+  register: kafka_consumer_tools_check
+  failed_when: not kafka_consumer_tools_check.stat.exists
+  tags:
+    - setup
+    - validation
+
+- name: Generate timestamp for test run
+  ansible.builtin.set_fact:
+    test_run_timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
+  run_once: true
+  tags:
+    - setup
+
+- name: Display test run information
+  ansible.builtin.debug:
+    msg: |
+      Test Run Information:
+        Timestamp: {{ test_run_timestamp }}
+        Topic: {{ perf_topic_name }}
+        Partitions: {{ perf_topic_partitions }}
+        Replication Factor: {{ perf_replication_factor }}
+        Brokers: {{ kafka_broker.hosts | join(',') }}
+        SSL Enabled: {{ ssl_enabled }}
+        Results Dir: {{ results_base_dir }}
+  run_once: true
+  tags:
+    - setup
+
+- name: Create SSL client properties file
+  ansible.builtin.copy:
+    dest: "{{ raw_logs_dir }}/client.properties"
+    content: |
+      security.protocol=SASL_SSL
+      sasl.mechanism=PLAIN
+      ssl.endpoint.identification.algorithm=
+      sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required \
+      username="{{ kafka_user }}" \
+      password="{{ kafka_password }}";
+      default.api.timeout.ms=20000
+      request.timeout.ms=20000
+    mode: '0640'
+  when: ssl_enabled | bool
+  delegate_to: localhost
+  run_once: true
+  tags:
+    - setup
+    - ssl
+
+- name: Create non-SSL client properties file
+  ansible.builtin.copy:
+    dest: "{{ raw_logs_dir }}/client.properties"
+    content: |
+      # Non-SSL client configuration
+      default.api.timeout.ms=20000
+      request.timeout.ms=20000
+    mode: '0644'
+  when: not (ssl_enabled | bool)
+  delegate_to: localhost
+  run_once: true
+  tags:
+    - setup
+
+- name: Delete existing test topic (if exists)
+  ansible.builtin.shell: |
+    {{ binary_base_path }}/bin/kafka-topics.sh \
+      --bootstrap-server {{ kafka_broker.hosts[0] }} \
+      --delete \
+      --topic {{ perf_topic_name }} \
+      {% if ssl_enabled | bool %}--command-config {{ raw_logs_dir }}/client.properties{% endif %} \
+      2>/dev/null || true
+  register: topic_delete
+  changed_when: "'deleted' in topic_delete.stdout"
+  run_once: true
+  ignore_errors: true
+  tags:
+    - setup
+    - topic
+
+- name: Wait for topic deletion to propagate
+  ansible.builtin.pause:
+    seconds: 5
+  when: topic_delete.changed
+  run_once: true
+  tags:
+    - setup
+    - topic
+
+- name: Create test topic
+  ansible.builtin.shell: |
+    {{ binary_base_path }}/bin/kafka-topics.sh \
+      --bootstrap-server {{ kafka_broker.hosts[0] }} \
+      --create \
+      --topic {{ perf_topic_name }} \
+      --if-not-exists \
+      --replication-factor {{ perf_replication_factor }} \
+      --partitions {{ perf_topic_partitions }} \
+      {% if ssl_enabled | bool %}--command-config {{ raw_logs_dir }}/client.properties{% endif %}
+  register: topic_create
+  retries: "{{ kafka_topic_create_retries }}"
+  delay: "{{ kafka_topic_create_delay }}"
+  until: topic_create.rc == 0
+  run_once: true
+  tags:
+    - setup
+    - topic
+
+- name: Verify topic creation
+  ansible.builtin.shell: |
+    {{ binary_base_path }}/bin/kafka-topics.sh \
+      --bootstrap-server {{ kafka_broker.hosts[0] }} \
+      --describe \
+      --topic {{ perf_topic_name }} \
+      {% if ssl_enabled | bool %}--command-config {{ raw_logs_dir }}/client.properties{% endif %}
+  register: topic_describe
+  changed_when: false
+  run_once: true
+  tags:
+    - setup
+    - topic
+    - validation
+
+- name: Display topic information
+  ansible.builtin.debug:
+    msg: "{{ topic_describe.stdout_lines }}"
+  run_once: true
+  tags:
+    - setup
+    - topic
+
+- name: Set setup_complete fact
+  ansible.builtin.set_fact:
+    setup_complete: true
+  run_once: true
+  tags:
+    - setup

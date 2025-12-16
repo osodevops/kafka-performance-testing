@@ -1,0 +1,90 @@
+---
+# Message Size Impact Tests (PRD Scenario 4)
+# Purpose: Understand relationship between message size and performance
+#
+# Usage:
+#   ansible-playbook -i inventories/dev playbooks/message_size_tests.yml
+#   ansible-playbook -i inventories/dev playbooks/message_size_tests.yml -e "test_record_sizes=[1024,2048,4096]"
+
+- name: Message Size Impact Tests (PRD Scenario 4)
+  hosts: all
+  gather_facts: true
+  tags:
+    - message_size
+    - analysis
+
+  vars:
+    scenario_name: "message_size"
+
+    # Message size parameters
+    test_record_sizes: "{{ message_size_matrix.record_size | default([128, 512, 1024, 4096, 16384]) }}"
+    test_compression_types: "{{ message_size_matrix.compression_type | default(['none', 'zstd']) }}"
+
+    # Fixed producer settings (from PRD)
+    perf_acks: "{{ message_size_matrix.acks | default('1') }}"
+    perf_linger_ms: "{{ message_size_matrix.linger_ms | default(10) }}"
+    batch_size_multiplier: "{{ message_size_matrix.batch_size_multiplier | default(10) }}"
+    perf_num_records: "{{ perf_defaults.num_records | default(1000000) }}"
+
+  tasks:
+    - name: Display test configuration
+      ansible.builtin.debug:
+        msg: |
+          Message Size Impact Test Configuration:
+            Record sizes: {{ test_record_sizes }}
+            Compression types: {{ test_compression_types }}
+            Fixed settings: acks={{ perf_acks }}, linger.ms={{ perf_linger_ms }}
+            Batch size: auto-scaled ({{ batch_size_multiplier }}x record size)
+            Total combinations: {{ test_record_sizes | length * test_compression_types | length }}
+      run_once: true
+
+    - name: Setup test environment
+      ansible.builtin.include_role:
+        name: setup_environment
+      run_once: true
+
+    - name: Run message size tests
+      ansible.builtin.include_role:
+        name: perf_producer
+      vars:
+        scenario_name: "msgsize_{{ item.0 }}_{{ item.1 }}"
+        perf_record_size: "{{ item.0 }}"
+        perf_compression_type: "{{ item.1 }}"
+        perf_batch_size: "{{ item.0 | int * batch_size_multiplier | int }}"
+        perf_acks: "{{ perf_acks }}"
+        perf_linger_ms: "{{ perf_linger_ms }}"
+      loop: "{{ test_record_sizes | product(test_compression_types) | list }}"
+      loop_control:
+        label: "size={{ item.0 }} bytes, compression={{ item.1 }}"
+
+    - name: Parse test logs
+      ansible.builtin.include_role:
+        name: log_parser
+      run_once: true
+
+    - name: Generate Excel report
+      ansible.builtin.include_role:
+        name: excel_generator
+      when: test_options.generate_report | default(true) | bool
+      run_once: true
+
+    - name: Cleanup test environment
+      ansible.builtin.include_role:
+        name: cleanup
+      vars:
+        delete_test_topics: "{{ test_options.cleanup_topics | default(true) }}"
+      run_once: true
+
+    - name: Display completion summary
+      ansible.builtin.debug:
+        msg: |
+          Message Size Impact Tests Complete!
+
+          Results:
+            Record sizes tested: {{ test_record_sizes }}
+            Compression types tested: {{ test_compression_types }}
+            Reports: {{ reports_dir }}/
+
+          Key Insight: Review the Message Size Analysis sheet in the Excel report
+          to understand the throughput vs. size relationship.
+      run_once: true

@@ -1,0 +1,49 @@
+---
+# Producer Baseline Tasks - Included by full_benchmark.yml
+
+- name: Setup environment for producer baseline
+  ansible.builtin.include_role:
+    name: setup_environment
+  run_once: true
+
+- name: Set producer baseline test variables
+  ansible.builtin.set_fact:
+    producer_test_acks: "{{ producer_test_matrix[test_profile].acks | default(['1']) }}"
+    producer_test_batch_sizes: "{{ producer_test_matrix[test_profile].batch_size | default([16384]) }}"
+    producer_test_linger_values: "{{ producer_test_matrix[test_profile].linger_ms | default([10]) }}"
+    producer_test_compression: "{{ producer_test_matrix[test_profile].compression_type | default(['zstd']) }}"
+    producer_test_record_sizes: "{{ producer_test_matrix[test_profile].record_size | default([1024]) }}"
+
+- name: Display producer baseline configuration
+  ansible.builtin.debug:
+    msg: |
+      Producer Baseline Tests:
+        acks: {{ producer_test_acks }}
+        batch.size: {{ producer_test_batch_sizes }}
+        linger.ms: {{ producer_test_linger_values }}
+        compression: {{ producer_test_compression }}
+        record.size: {{ producer_test_record_sizes }}
+  run_once: true
+
+- name: Run producer baseline tests
+  ansible.builtin.include_role:
+    name: perf_producer
+  vars:
+    scenario_name: "baseline_acks{{ item.0 }}_batch{{ item.1 }}_linger{{ item.2 }}_{{ item.3 }}_size{{ item.4 }}"
+    perf_acks: "{{ item.0 }}"
+    perf_batch_size: "{{ item.1 }}"
+    perf_linger_ms: "{{ item.2 }}"
+    perf_compression_type: "{{ item.3 }}"
+    perf_record_size: "{{ item.4 }}"
+  loop: "{{ producer_test_acks | product(producer_test_batch_sizes, producer_test_linger_values, producer_test_compression, producer_test_record_sizes) | list }}"
+  loop_control:
+    label: "acks={{ item.0 }}, batch={{ item.1 }}, linger={{ item.2 }}, comp={{ item.3 }}, size={{ item.4 }}"
+
+- name: Cleanup producer baseline topic
+  ansible.builtin.include_role:
+    name: cleanup
+  vars:
+    delete_test_topics: true
+    archive_logs: false
+    remove_temp_files: false
+  run_once: true

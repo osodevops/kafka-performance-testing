@@ -1,0 +1,116 @@
+---
+# Cleanup Role - Main Tasks
+
+- name: Display cleanup configuration
+  ansible.builtin.debug:
+    msg: |
+      Cleanup Configuration:
+        Delete Test Topics: {{ delete_test_topics }}
+        Archive Logs: {{ archive_logs }}
+        Remove Temp Files: {{ remove_temp_files }}
+  run_once: true
+  tags:
+    - cleanup
+    - debug
+
+- name: Delete test topic
+  ansible.builtin.shell: |
+    {{ binary_base_path }}/bin/kafka-topics.sh \
+      --bootstrap-server {{ kafka_broker.hosts[0] }} \
+      --delete \
+      --topic {{ perf_topic_name }} \
+      {% if ssl_enabled | bool %}--command-config {{ raw_logs_dir }}/client.properties{% endif %} \
+      2>/dev/null || true
+  register: topic_delete
+  when: delete_test_topics | bool
+  run_once: true
+  changed_when: "'deleted' in topic_delete.stdout or topic_delete.rc == 0"
+  ignore_errors: true
+  tags:
+    - cleanup
+    - topic
+
+- name: Display topic deletion result
+  ansible.builtin.debug:
+    msg: "Topic {{ perf_topic_name }} deletion: {{ 'successful' if topic_delete.rc == 0 else 'failed or topic did not exist' }}"
+  when: delete_test_topics | bool
+  run_once: true
+  tags:
+    - cleanup
+    - topic
+
+- name: Create archive directory
+  ansible.builtin.file:
+    path: "{{ archive_dir }}"
+    state: directory
+    mode: '0755'
+  delegate_to: localhost
+  run_once: true
+  when: archive_logs | bool
+  tags:
+    - cleanup
+    - archive
+
+- name: Archive raw logs
+  community.general.archive:
+    path: "{{ raw_logs_dir }}"
+    dest: "{{ archive_dir }}/raw_logs_{{ test_run_timestamp | default(ansible_date_time.iso8601_basic_short) }}.{{ archive_format }}"
+    format: "{{ archive_format | regex_replace('\\.', '') }}"
+  delegate_to: localhost
+  run_once: true
+  when: archive_logs | bool
+  tags:
+    - cleanup
+    - archive
+
+- name: Remove temporary SSL files
+  ansible.builtin.file:
+    path: "{{ raw_logs_dir }}/client.properties"
+    state: absent
+  delegate_to: localhost
+  when: remove_temp_files | bool
+  run_once: true
+  tags:
+    - cleanup
+    - temp
+
+- name: Remove consumer configuration files
+  ansible.builtin.find:
+    paths: "{{ raw_logs_dir }}"
+    patterns: "consumer_*.properties"
+  register: consumer_configs
+  delegate_to: localhost
+  when: remove_temp_files | bool
+  run_once: true
+  tags:
+    - cleanup
+    - temp
+
+- name: Delete consumer configuration files
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ consumer_configs.files | default([]) }}"
+  delegate_to: localhost
+  when: remove_temp_files | bool
+  run_once: true
+  tags:
+    - cleanup
+    - temp
+
+- name: Display cleanup summary
+  ansible.builtin.debug:
+    msg: |
+      Cleanup Summary:
+        Topics deleted: {{ delete_test_topics }}
+        Logs archived: {{ archive_logs }}
+        Temp files removed: {{ remove_temp_files }}
+
+      Results Location:
+        Raw Logs: {{ raw_logs_dir }}
+        Parsed Data: {{ parsed_data_dir }}
+        Reports: {{ reports_dir }}
+  run_once: true
+  tags:
+    - cleanup
+    - summary

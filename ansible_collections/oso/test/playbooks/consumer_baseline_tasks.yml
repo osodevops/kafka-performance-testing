@@ -1,0 +1,58 @@
+---
+# Consumer Baseline Tasks - Included by full_benchmark.yml
+
+- name: Setup environment for consumer baseline
+  ansible.builtin.include_role:
+    name: setup_environment
+  run_once: true
+
+- name: Set consumer baseline test variables
+  ansible.builtin.set_fact:
+    consumer_test_fetch_min: "{{ consumer_test_matrix[test_profile].fetch_min_bytes | default([10240]) }}"
+    consumer_test_fetch_wait: "{{ consumer_test_matrix[test_profile].fetch_max_wait_ms | default([100]) }}"
+    consumer_test_poll_records: "{{ consumer_test_matrix[test_profile].max_poll_records | default([500]) }}"
+    consumer_test_buffer: "{{ consumer_test_matrix[test_profile].receive_buffer_bytes | default([1048576]) }}"
+
+- name: Display consumer baseline configuration
+  ansible.builtin.debug:
+    msg: |
+      Consumer Baseline Tests:
+        fetch.min.bytes: {{ consumer_test_fetch_min }}
+        fetch.max.wait.ms: {{ consumer_test_fetch_wait }}
+        max.poll.records: {{ consumer_test_poll_records }}
+        receive.buffer.bytes: {{ consumer_test_buffer }}
+  run_once: true
+
+- name: Produce test data for consumer tests
+  ansible.builtin.include_role:
+    name: perf_producer
+  vars:
+    scenario_name: "consumer_data_prep"
+    perf_acks: "1"
+    perf_batch_size: 16384
+    perf_linger_ms: 10
+    perf_compression_type: "zstd"
+    perf_record_size: 1024
+  run_once: true
+
+- name: Run consumer baseline tests
+  ansible.builtin.include_role:
+    name: perf_consumer
+  vars:
+    scenario_name: "baseline_fetch{{ item.0 }}_wait{{ item.1 }}_poll{{ item.2 }}"
+    perf_fetch_min_bytes: "{{ item.0 }}"
+    perf_fetch_max_wait_ms: "{{ item.1 }}"
+    perf_max_poll_records: "{{ item.2 }}"
+    perf_receive_buffer_bytes: "{{ item.3 }}"
+  loop: "{{ consumer_test_fetch_min | product(consumer_test_fetch_wait, consumer_test_poll_records, consumer_test_buffer) | list }}"
+  loop_control:
+    label: "fetch={{ item.0 }}, wait={{ item.1 }}, poll={{ item.2 }}"
+
+- name: Cleanup consumer baseline topic
+  ansible.builtin.include_role:
+    name: cleanup
+  vars:
+    delete_test_topics: true
+    archive_logs: false
+    remove_temp_files: false
+  run_once: true

@@ -1,0 +1,44 @@
+---
+# Load Scaling Tasks - Included by full_benchmark.yml
+
+- name: Setup environment for load scaling
+  ansible.builtin.include_role:
+    name: setup_environment
+  run_once: true
+
+- name: Set load scaling test variables
+  ansible.builtin.set_fact:
+    scaling_num_producers: "{{ scaling_test_matrix.num_producers | default([1, 3]) }}"
+    scaling_num_records: "{{ (perf_defaults.num_records | default(1000000) / 10) | int }}"
+
+- name: Display load scaling configuration
+  ansible.builtin.debug:
+    msg: |
+      Load Scaling Tests:
+        Producer counts: {{ scaling_num_producers }}
+        Records per test: {{ scaling_num_records }}
+  run_once: true
+
+- name: Run load scaling tests
+  ansible.builtin.include_role:
+    name: perf_producer
+  vars:
+    scenario_name: "scaling_{{ item }}prod"
+    perf_acks: "1"
+    perf_batch_size: 16384
+    perf_linger_ms: 10
+    perf_compression_type: "zstd"
+    perf_record_size: 1024
+    perf_num_records: "{{ scaling_num_records }}"
+  loop: "{{ scaling_num_producers }}"
+  loop_control:
+    label: "{{ item }} producer(s)"
+
+- name: Cleanup load scaling topic
+  ansible.builtin.include_role:
+    name: cleanup
+  vars:
+    delete_test_topics: true
+    archive_logs: false
+    remove_temp_files: false
+  run_once: true

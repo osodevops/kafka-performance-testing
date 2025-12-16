@@ -21,8 +21,8 @@
 - name: Test topic creation, produce and consume
   hosts: all
   vars:
-    kafka_user: XXX # Amended to match the broker user in the test environment
-    kafka_password: XXX # Amended to match the broker password in the test environment
+    kafka_user: ""  # Set to your broker username if SASL is enabled
+    kafka_password: ""  # Set to your broker password if SASL is enabled
     ssl_enabled: false
     kafka_broker:
       hosts:

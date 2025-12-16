@@ -33,8 +33,8 @@
     perf_batch_size: 64000
     ssl_enabled: true
 
-    kafka_user: XXX # Amended to match the broker user in the test environment
-    kafka_password: XXX # Amended to match the broker password in the test environment
+    kafka_user: ""  # Set to your broker username if SASL is enabled
+    kafka_password: ""  # Set to your broker password if SASL is enabled
 
     kafka_broker:
       hosts:

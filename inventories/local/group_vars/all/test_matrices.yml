@@ -1,0 +1,65 @@
+# Test Matrices for Local Docker Compose Testing
+# Reduced parameter sets for faster local iteration
+
+# Producer Test Matrix (Quick Profile - Reduced for local testing)
+producer_test_matrix:
+  quick:
+    acks: ["1"]
+    batch_size: [16384]
+    linger_ms: [10]
+    compression_type: ["none"]
+    record_size: [1024]
+
+  baseline:
+    acks: ["1", "all"]
+    batch_size: [16384, 32768]
+    linger_ms: [0, 10]
+    compression_type: ["none", "lz4"]
+    record_size: [1024]
+
+# Consumer Test Matrix
+consumer_test_matrix:
+  quick:
+    fetch_min_bytes: [1024]
+    fetch_max_wait_ms: [500]
+    max_poll_records: [500]
+
+  baseline:
+    fetch_min_bytes: [1024, 52428]
+    fetch_max_wait_ms: [100, 500]
+    max_poll_records: [500, 1000]
+
+# Load Scaling Matrix (Reduced for local)
+load_scaling_matrix:
+  quick:
+    num_producers: [1, 2]
+    num_consumers: [1]
+
+  baseline:
+    num_producers: [1, 3, 5]
+    num_consumers: [1, 3]
+
+# Message Size Matrix
+message_size_matrix:
+  quick:
+    record_size: [512, 2048]
+    compression_type: ["none"]
+
+  baseline:
+    record_size: [256, 1024, 4096, 8192]
+    compression_type: ["none", "lz4"]
+
+# Acks Trade-off Matrix
+acks_tradeoff_matrix:
+  quick:
+    acks: ["1", "all"]
+
+  baseline:
+    acks: ["0", "1", "all"]
+
+# Default test configuration for local
+default_test_config:
+  num_records: 100000
+  record_size: 1024
+  warmup_records: 10000
+  async_timeout: 60000

@@ -1,0 +1,45 @@
+---
+# Message Size Tasks - Included by full_benchmark.yml
+
+- name: Setup environment for message size tests
+  ansible.builtin.include_role:
+    name: setup_environment
+  run_once: true
+
+- name: Set message size test variables
+  ansible.builtin.set_fact:
+    msgsize_record_sizes: "{{ message_size_matrix.record_size | default([512, 1024, 4096]) }}"
+    msgsize_compression: "{{ message_size_matrix.compression_type | default(['none', 'zstd']) }}"
+    msgsize_batch_multiplier: "{{ message_size_matrix.batch_size_multiplier | default(10) }}"
+
+- name: Display message size configuration
+  ansible.builtin.debug:
+    msg: |
+      Message Size Tests:
+        Record sizes: {{ msgsize_record_sizes }}
+        Compression types: {{ msgsize_compression }}
+        Batch size multiplier: {{ msgsize_batch_multiplier }}x
+  run_once: true
+
+- name: Run message size tests
+  ansible.builtin.include_role:
+    name: perf_producer
+  vars:
+    scenario_name: "msgsize_{{ item.0 }}_{{ item.1 }}"
+    perf_record_size: "{{ item.0 }}"
+    perf_compression_type: "{{ item.1 }}"
+    perf_batch_size: "{{ item.0 | int * msgsize_batch_multiplier | int }}"
+    perf_acks: "1"
+    perf_linger_ms: 10
+  loop: "{{ msgsize_record_sizes | product(msgsize_compression) | list }}"
+  loop_control:
+    label: "size={{ item.0 }}, compression={{ item.1 }}"
+
+- name: Cleanup message size topic
+  ansible.builtin.include_role:
+    name: cleanup
+  vars:
+    delete_test_topics: true
+    archive_logs: false
+    remove_temp_files: false
+  run_once: true

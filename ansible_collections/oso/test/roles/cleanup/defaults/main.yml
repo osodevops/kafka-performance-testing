@@ -1,0 +1,18 @@
+---
+# Cleanup Role - Default Variables
+
+# Cleanup options
+delete_test_topics: true
+archive_logs: false
+remove_temp_files: true
+
+# Archive settings
+archive_dir: "{{ results_base_dir }}/archives"
+archive_format: "tar.gz"
+
+# Inherited from setup_environment
+# kafka_broker
+# perf_topic_name
+# ssl_enabled
+# binary_base_path
+# raw_logs_dir

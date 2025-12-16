@@ -1,0 +1,100 @@
+---
+# Consumer Configuration Baseline Tests (PRD Scenario 2)
+# Purpose: Identify optimal consumer settings
+#
+# Usage:
+#   ansible-playbook -i inventories/dev playbooks/consumer_baseline.yml
+#   ansible-playbook -i inventories/dev playbooks/consumer_baseline.yml -e "test_profile=quick"
+
+- name: Consumer Configuration Baseline (PRD Scenario 2)
+  hosts: all
+  gather_facts: true
+  tags:
+    - consumer
+    - baseline
+
+  vars:
+    scenario_name: "consumer_baseline"
+    test_profile: "quick"  # Options: baseline, quick
+
+    # Load test matrix based on profile
+    test_fetch_min_bytes: "{{ consumer_test_matrix[test_profile].fetch_min_bytes | default([10240]) }}"
+    test_fetch_max_wait_ms: "{{ consumer_test_matrix[test_profile].fetch_max_wait_ms | default([100]) }}"
+    test_max_poll_records: "{{ consumer_test_matrix[test_profile].max_poll_records | default([500]) }}"
+    test_receive_buffer_bytes: "{{ consumer_test_matrix[test_profile].receive_buffer_bytes | default([1048576]) }}"
+
+    # Override defaults
+    perf_num_messages: "{{ perf_defaults.num_records | default(1000000) }}"
+
+  pre_tasks:
+    - name: Display test configuration
+      ansible.builtin.debug:
+        msg: |
+          Consumer Baseline Test Configuration:
+            Profile: {{ test_profile }}
+            fetch.min.bytes values: {{ test_fetch_min_bytes }}
+            fetch.max.wait.ms values: {{ test_fetch_max_wait_ms }}
+            max.poll.records values: {{ test_max_poll_records }}
+            receive.buffer.bytes values: {{ test_receive_buffer_bytes }}
+            Total combinations: {{ test_fetch_min_bytes | length * test_fetch_max_wait_ms | length * test_max_poll_records | length * test_receive_buffer_bytes | length }}
+      run_once: true
+
+  tasks:
+    - name: Setup test environment
+      ansible.builtin.include_role:
+        name: setup_environment
+      run_once: true
+
+    - name: Produce test data for consumer tests
+      ansible.builtin.include_role:
+        name: perf_producer
+      vars:
+        scenario_name: "consumer_baseline_data"
+        perf_acks: "1"
+        perf_batch_size: 16384
+        perf_linger_ms: 10
+        perf_compression_type: "zstd"
+        perf_record_size: 1024
+        perf_num_records: "{{ perf_num_messages }}"
+      run_once: true
+
+    - name: Run consumer baseline tests
+      ansible.builtin.include_role:
+        name: perf_consumer
+      vars:
+        scenario_name: "baseline_fetch{{ item.0 }}_wait{{ item.1 }}_poll{{ item.2 }}_buf{{ item.3 }}"
+        perf_fetch_min_bytes: "{{ item.0 }}"
+        perf_fetch_max_wait_ms: "{{ item.1 }}"
+        perf_max_poll_records: "{{ item.2 }}"
+        perf_receive_buffer_bytes: "{{ item.3 }}"
+      loop: "{{ test_fetch_min_bytes | product(test_fetch_max_wait_ms, test_max_poll_records, test_receive_buffer_bytes) | list }}"
+      loop_control:
+        label: "fetch.min={{ item.0 }}, wait={{ item.1 }}, poll={{ item.2 }}, buf={{ item.3 }}"
+
+    - name: Parse test logs
+      ansible.builtin.include_role:
+        name: log_parser
+      run_once: true
+
+    - name: Generate Excel report
+      ansible.builtin.include_role:
+        name: excel_generator
+      when: test_options.generate_report | default(true) | bool
+      run_once: true
+
+    - name: Cleanup test environment
+      ansible.builtin.include_role:
+        name: cleanup
+      vars:
+        delete_test_topics: "{{ test_options.cleanup_topics | default(true) }}"
+      run_once: true
+
+    - name: Display completion summary
+      ansible.builtin.debug:
+        msg: |
+          Consumer Baseline Tests Complete!
+
+          Results:
+            Tests executed: {{ consumer_tests_completed | default([]) | length }}
+            Reports: {{ reports_dir }}/
+      run_once: true

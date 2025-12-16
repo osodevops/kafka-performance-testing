@@ -1,0 +1,133 @@
+---
+# Excel Generator Role - Main Tasks
+
+- name: Verify Excel generator script exists
+  ansible.builtin.stat:
+    path: "{{ excel_script }}"
+  register: script_check
+  delegate_to: localhost
+  failed_when: not script_check.stat.exists
+  tags:
+    - excel
+    - validation
+
+- name: Check for virtual environment
+  ansible.builtin.stat:
+    path: "{{ python_venv }}/bin/python"
+  register: venv_check
+  delegate_to: localhost
+  when: use_venv | bool
+  tags:
+    - excel
+    - validation
+
+- name: Set Python executable
+  ansible.builtin.set_fact:
+    python_exec: "{% if use_venv | bool and venv_check.stat.exists | default(false) %}{{ python_venv }}/bin/python{% else %}{{ python_executable }}{% endif %}"
+  tags:
+    - excel
+
+- name: Find latest parsed results file
+  ansible.builtin.find:
+    paths: "{{ parsed_data_dir }}"
+    patterns: "parsed_results_*.json"
+  register: parsed_files
+  delegate_to: localhost
+  run_once: true
+  when: latest_parsed_file is not defined
+  tags:
+    - excel
+
+- name: Set input file from search
+  ansible.builtin.set_fact:
+    input_json_file: "{{ (parsed_files.files | sort(attribute='mtime') | last).path }}"
+  when:
+    - latest_parsed_file is not defined
+    - parsed_files.files | length > 0
+  delegate_to: localhost
+  run_once: true
+  tags:
+    - excel
+
+- name: Set input file from previous role
+  ansible.builtin.set_fact:
+    input_json_file: "{{ latest_parsed_file }}"
+  when: latest_parsed_file is defined
+  delegate_to: localhost
+  run_once: true
+  tags:
+    - excel
+
+- name: Fail if no parsed results found
+  ansible.builtin.fail:
+    msg: "No parsed results file found in {{ parsed_data_dir }}"
+  when: input_json_file is not defined
+  tags:
+    - excel
+    - validation
+
+- name: Set output report path
+  ansible.builtin.set_fact:
+    output_report: "{{ reports_dir }}/{{ report_filename }}"
+  tags:
+    - excel
+
+- name: Display Excel generator configuration
+  ansible.builtin.debug:
+    msg: |
+      Excel Generator Configuration:
+        Python: {{ python_exec }}
+        Script: {{ excel_script }}
+        Input JSON: {{ input_json_file }}
+        Output Report: {{ output_report }}
+  delegate_to: localhost
+  run_once: true
+  tags:
+    - excel
+    - debug
+
+- name: Run Excel generator script
+  ansible.builtin.command:
+    cmd: >
+      {{ python_exec }} {{ excel_script }}
+      {{ input_json_file }}
+      {{ output_report }}
+      {% if generator_verbose | bool %}--verbose{% endif %}
+  register: generator_output
+  delegate_to: localhost
+  run_once: true
+  changed_when: "'generated' in generator_output.stdout"
+  tags:
+    - excel
+    - execute
+
+- name: Display generator output
+  ansible.builtin.debug:
+    msg: "{{ generator_output.stdout_lines }}"
+  delegate_to: localhost
+  run_once: true
+  tags:
+    - excel
+    - results
+
+- name: Verify report was created
+  ansible.builtin.stat:
+    path: "{{ output_report }}"
+  register: report_check
+  delegate_to: localhost
+  run_once: true
+  failed_when: not report_check.stat.exists
+  tags:
+    - excel
+    - validation
+
+- name: Display report location
+  ansible.builtin.debug:
+    msg: |
+      Excel report generated successfully!
+      Location: {{ output_report }}
+      Size: {{ report_check.stat.size }} bytes
+  delegate_to: localhost
+  run_once: true
+  tags:
+    - excel

@@ -1,0 +1,108 @@
+---
+# Producer Performance Role - Main Tasks
+
+- name: Set producer log filename
+  ansible.builtin.set_fact:
+    producer_log_file: "producer_{{ scenario_name }}_acks{{ perf_acks }}_batch{{ perf_batch_size }}_linger{{ perf_linger_ms }}_{{ perf_compression_type }}_size{{ perf_record_size }}_{{ test_run_timestamp | default(ansible_date_time.iso8601_basic_short) }}.log"
+  tags:
+    - producer
+    - setup
+
+- name: Display producer test configuration
+  ansible.builtin.debug:
+    msg: |
+      Producer Test Configuration:
+        Scenario: {{ scenario_name }}
+        Topic: {{ perf_topic_name }}
+        Records: {{ perf_num_records }}
+        Record Size: {{ perf_record_size }} bytes
+        Throughput: {{ perf_throughput }} (-1 = unlimited)
+        acks: {{ perf_acks }}
+        batch.size: {{ perf_batch_size }}
+        linger.ms: {{ perf_linger_ms }}
+        compression.type: {{ perf_compression_type }}
+        buffer.memory: {{ perf_buffer_memory }}
+        max.in.flight.requests: {{ perf_max_inflight }}
+        Log File: {{ producer_log_file }}
+  tags:
+    - producer
+    - debug
+
+- name: Execute producer performance test (async)
+  ansible.builtin.shell: |
+    {{ binary_base_path }}/bin/kafka-producer-perf-test.sh \
+      --topic {{ perf_topic_name }} \
+      --num-records {{ perf_num_records }} \
+      --record-size {{ perf_record_size }} \
+      --throughput {{ perf_throughput }} \
+      {% if ssl_enabled | bool %}--producer.config {{ raw_logs_dir }}/client.properties{% endif %} \
+      --producer-props \
+        bootstrap.servers={{ kafka_broker.hosts | join(',') }} \
+        acks={{ perf_acks }} \
+        batch.size={{ perf_batch_size }} \
+        linger.ms={{ perf_linger_ms }} \
+        compression.type={{ perf_compression_type }} \
+        buffer.memory={{ perf_buffer_memory }} \
+        max.in.flight.requests.per.connection={{ perf_max_inflight }} \
+      --print-metrics 2>&1
+  register: producer_output
+  async: "{{ producer_async_timeout }}"
+  poll: "{{ producer_poll_interval }}"
+  changed_when: false
+  tags:
+    - producer
+    - execute
+
+- name: Wait for producer completion
+  ansible.builtin.async_status:
+    jid: "{{ producer_output.ansible_job_id }}"
+  register: producer_result
+  until: producer_result.finished
+  retries: "{{ (producer_async_timeout / 10) | int }}"
+  delay: 10
+  when: producer_poll_interval == 0
+  tags:
+    - producer
+    - wait
+
+- name: Set producer result for synchronous execution
+  ansible.builtin.set_fact:
+    producer_result: "{{ producer_output }}"
+  when: producer_poll_interval != 0
+  tags:
+    - producer
+
+- name: Display producer test results summary
+  ansible.builtin.debug:
+    msg: |
+      Producer Test Results:
+        {{ producer_result.stdout_lines | default(['No output']) | last }}
+  tags:
+    - producer
+    - results
+
+- name: Save producer output to log file
+  ansible.builtin.copy:
+    content: |
+      # Producer Performance Test - {{ scenario_name }}
+      # Test Run: {{ test_run_timestamp | default(ansible_date_time.iso8601_basic_short) }}
+      # Configuration: acks={{ perf_acks }}, batch.size={{ perf_batch_size }}, linger.ms={{ perf_linger_ms }}, compression.type={{ perf_compression_type }}
+      # Record Size: {{ perf_record_size }} bytes
+      # Num Records: {{ perf_num_records }}
+      # Host: {{ inventory_hostname }}
+      # Date: {{ ansible_date_time.iso8601 }}
+      # Brokers: {{ kafka_broker.hosts | join(',') }}
+
+      {{ producer_result.stdout | default('No output captured') }}
+    dest: "{{ raw_logs_dir }}/{{ producer_log_file }}"
+    mode: '0644'
+  delegate_to: localhost
+  tags:
+    - producer
+    - logging
+
+- name: Register producer test completion
+  ansible.builtin.set_fact:
+    producer_tests_completed: "{{ producer_tests_completed | default([]) + [producer_log_file] }}"
+  tags:
+    - producer

@@ -1,0 +1,31 @@
+---
+# Producer Performance Role - Default Variables
+
+# Test parameters
+perf_num_records: 1000000
+perf_record_size: 1024
+perf_throughput: -1  # -1 for unlimited
+
+# Producer configuration
+perf_acks: "1"
+perf_batch_size: 16384
+perf_linger_ms: 10
+perf_compression_type: "zstd"
+perf_buffer_memory: 67108864  # 64MB
+perf_max_inflight: 5
+
+# Execution settings
+perf_parallel: true
+producer_async_timeout: 80000
+producer_poll_interval: 0
+
+# Scenario identification
+scenario_name: "default"
+
+# Inherited from setup_environment (should be set)
+# kafka_broker
+# perf_topic_name
+# ssl_enabled
+# binary_base_path
+# raw_logs_dir
+# test_run_timestamp

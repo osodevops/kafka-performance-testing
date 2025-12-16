@@ -1,0 +1,113 @@
+---
+# Log Parser Role - Main Tasks
+
+- name: Verify parse script exists
+  ansible.builtin.stat:
+    path: "{{ parse_script }}"
+  register: script_check
+  delegate_to: localhost
+  failed_when: not script_check.stat.exists
+  tags:
+    - parser
+    - validation
+
+- name: Check for virtual environment
+  ansible.builtin.stat:
+    path: "{{ python_venv }}/bin/python"
+  register: venv_check
+  delegate_to: localhost
+  when: use_venv | bool
+  tags:
+    - parser
+    - validation
+
+- name: Set Python executable
+  ansible.builtin.set_fact:
+    python_exec: "{% if use_venv | bool and venv_check.stat.exists | default(false) %}{{ python_venv }}/bin/python{% else %}{{ python_executable }}{% endif %}"
+  tags:
+    - parser
+
+- name: Display parser configuration
+  ansible.builtin.debug:
+    msg: |
+      Log Parser Configuration:
+        Python: {{ python_exec }}
+        Script: {{ parse_script }}
+        Input Directory: {{ raw_logs_dir }}
+        Output Directory: {{ parsed_data_dir }}
+        Verbose: {{ parser_verbose }}
+  delegate_to: localhost
+  run_once: true
+  tags:
+    - parser
+    - debug
+
+- name: Count log files to parse
+  ansible.builtin.find:
+    paths: "{{ raw_logs_dir }}"
+    patterns: "*.log"
+  register: log_files
+  delegate_to: localhost
+  run_once: true
+  tags:
+    - parser
+
+- name: Display log file count
+  ansible.builtin.debug:
+    msg: "Found {{ log_files.files | length }} log files to parse"
+  delegate_to: localhost
+  run_once: true
+  tags:
+    - parser
+
+- name: Run log parser script
+  ansible.builtin.command:
+    cmd: >
+      {{ python_exec }} {{ parse_script }}
+      {{ raw_logs_dir }}
+      {{ parsed_data_dir }}
+      {% if parser_verbose | bool %}--verbose{% endif %}
+      {% if parser_individual_files | bool %}--individual{% endif %}
+  register: parser_output
+  delegate_to: localhost
+  run_once: true
+  changed_when: "'Parsed' in parser_output.stdout"
+  tags:
+    - parser
+    - execute
+
+- name: Display parser output
+  ansible.builtin.debug:
+    msg: "{{ parser_output.stdout_lines }}"
+  delegate_to: localhost
+  run_once: true
+  tags:
+    - parser
+    - results
+
+- name: Find parsed JSON files
+  ansible.builtin.find:
+    paths: "{{ parsed_data_dir }}"
+    patterns: "*.json"
+  register: parsed_files
+  delegate_to: localhost
+  run_once: true
+  tags:
+    - parser
+
+- name: Set latest parsed results file
+  ansible.builtin.set_fact:
+    latest_parsed_file: "{{ (parsed_files.files | sort(attribute='mtime') | last).path }}"
+  when: parsed_files.files | length > 0
+  delegate_to: localhost
+  run_once: true
+  tags:
+    - parser
+
+- name: Display parsed file location
+  ansible.builtin.debug:
+    msg: "Latest parsed results: {{ latest_parsed_file | default('No parsed files found') }}"
+  delegate_to: localhost
+  run_once: true
+  tags:
+    - parser

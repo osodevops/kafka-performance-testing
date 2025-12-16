@@ -1,0 +1,86 @@
+---
+# Load Scaling Tests (PRD Scenario 3)
+# Purpose: Measure performance degradation under multi-producer/consumer load
+#
+# Usage:
+#   ansible-playbook -i inventories/dev playbooks/load_scaling.yml
+#   ansible-playbook -i inventories/dev playbooks/load_scaling.yml -e "num_producers=5 num_consumers=3"
+
+- name: Load Scaling Tests (PRD Scenario 3)
+  hosts: all
+  gather_facts: true
+  tags:
+    - scaling
+    - load
+
+  vars:
+    scenario_name: "load_scaling"
+
+    # Scaling parameters
+    test_num_producers: "{{ scaling_test_matrix.num_producers | default([1, 3, 5]) }}"
+    test_num_consumers: "{{ scaling_test_matrix.num_consumers | default([1, 3]) }}"
+
+    # Use optimal settings from baseline (or defaults)
+    perf_acks: "1"
+    perf_batch_size: 16384
+    perf_linger_ms: 10
+    perf_compression_type: "zstd"
+    perf_record_size: 1024
+    perf_num_records: "{{ (perf_defaults.num_records | default(1000000) / 10) | int }}"  # Smaller dataset for scaling tests
+
+  tasks:
+    - name: Display test configuration
+      ansible.builtin.debug:
+        msg: |
+          Load Scaling Test Configuration:
+            Producer counts: {{ test_num_producers }}
+            Consumer counts: {{ test_num_consumers }}
+            Records per producer: {{ perf_num_records }}
+            Producer settings: acks={{ perf_acks }}, batch={{ perf_batch_size }}, compression={{ perf_compression_type }}
+      run_once: true
+
+    - name: Setup test environment
+      ansible.builtin.include_role:
+        name: setup_environment
+      run_once: true
+
+    - name: Run scaling tests - varying producer count
+      ansible.builtin.include_tasks: scaling_producer_iteration.yml
+      vars:
+        num_producers: "{{ item }}"
+      loop: "{{ test_num_producers }}"
+      loop_control:
+        label: "{{ item }} producer(s)"
+
+    - name: Parse test logs
+      ansible.builtin.include_role:
+        name: log_parser
+      run_once: true
+
+    - name: Generate Excel report
+      ansible.builtin.include_role:
+        name: excel_generator
+      when: test_options.generate_report | default(true) | bool
+      run_once: true
+
+    - name: Cleanup test environment
+      ansible.builtin.include_role:
+        name: cleanup
+      vars:
+        delete_test_topics: "{{ test_options.cleanup_topics | default(true) }}"
+      run_once: true
+
+    - name: Display completion summary
+      ansible.builtin.debug:
+        msg: |
+          Load Scaling Tests Complete!
+
+          Results:
+            Producer counts tested: {{ test_num_producers }}
+            Consumer counts tested: {{ test_num_consumers }}
+            Reports: {{ reports_dir }}/
+      run_once: true
+
+
+# Note: Create a separate file for the included tasks
+# ansible_collections/oso/test/playbooks/scaling_producer_iteration.yml

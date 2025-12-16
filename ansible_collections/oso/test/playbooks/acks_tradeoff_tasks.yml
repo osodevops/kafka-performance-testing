@@ -1,0 +1,47 @@
+---
+# Acks Trade-off Tasks - Included by full_benchmark.yml
+
+- name: Setup environment for acks trade-off tests
+  ansible.builtin.include_role:
+    name: setup_environment
+  run_once: true
+
+- name: Set acks trade-off test variables
+  ansible.builtin.set_fact:
+    acks_test_values: "{{ acks_tradeoff_matrix.acks | default(['0', '1', 'all']) }}"
+
+- name: Display acks trade-off configuration
+  ansible.builtin.debug:
+    msg: |
+      Acks Trade-off Tests:
+        acks values: {{ acks_test_values }}
+        Fixed: batch.size=16384, linger.ms=10, record.size=1024
+
+      Expected behavior:
+        acks=0: Fastest, no durability guarantee
+        acks=1: Balanced throughput and durability
+        acks=all: Strongest durability, may impact throughput
+  run_once: true
+
+- name: Run acks trade-off tests
+  ansible.builtin.include_role:
+    name: perf_producer
+  vars:
+    scenario_name: "acks_{{ item }}"
+    perf_acks: "{{ item }}"
+    perf_batch_size: 16384
+    perf_linger_ms: 10
+    perf_compression_type: "zstd"
+    perf_record_size: 1024
+  loop: "{{ acks_test_values }}"
+  loop_control:
+    label: "acks={{ item }}"
+
+- name: Cleanup acks trade-off topic
+  ansible.builtin.include_role:
+    name: cleanup
+  vars:
+    delete_test_topics: true
+    archive_logs: false
+    remove_temp_files: false
+  run_once: true

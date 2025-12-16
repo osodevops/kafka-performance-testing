@@ -1,0 +1,182 @@
+---
+# Full Kafka Performance Benchmark
+# Orchestrates all test scenarios from the PRD
+#
+# Usage:
+#   ansible-playbook -i inventories/dev playbooks/full_benchmark.yml
+#   ansible-playbook -i inventories/dev playbooks/full_benchmark.yml -e "test_profile=quick"
+#   ansible-playbook -i inventories/dev playbooks/full_benchmark.yml --tags "producer,consumer"
+#   ansible-playbook -i inventories/dev playbooks/full_benchmark.yml -e "run_producer_baseline=true run_load_scaling=false"
+
+- name: Kafka Full Performance Benchmark
+  hosts: all
+  gather_facts: true
+
+  vars:
+    # Test execution flags
+    run_producer_baseline: true
+    run_consumer_baseline: true
+    run_load_scaling: true
+    run_message_size: true
+    run_acks_tradeoff: true
+    generate_report: true
+
+    # Test profile
+    test_profile: "quick"  # Options: baseline, quick
+
+  pre_tasks:
+    - name: Display benchmark configuration
+      ansible.builtin.debug:
+        msg: |
+          Kafka Full Performance Benchmark
+          =================================
+
+          Test Profile: {{ test_profile }}
+
+          Scenarios to run:
+            1. Producer Baseline: {{ run_producer_baseline }}
+            2. Consumer Baseline: {{ run_consumer_baseline }}
+            3. Load Scaling:      {{ run_load_scaling }}
+            4. Message Size:      {{ run_message_size }}
+            5. Acks Trade-off:    {{ run_acks_tradeoff }}
+
+          Report Generation: {{ generate_report }}
+
+          Results will be saved to: {{ results_base_dir | default('./results') }}/
+      run_once: true
+
+    - name: Create results directory structure
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - "{{ results_base_dir | default('./results') }}/raw_logs"
+        - "{{ results_base_dir | default('./results') }}/parsed_data"
+        - "{{ results_base_dir | default('./results') }}/reports"
+      delegate_to: localhost
+      run_once: true
+
+    - name: Record benchmark start time
+      ansible.builtin.set_fact:
+        benchmark_start_time: "{{ ansible_date_time.iso8601 }}"
+      run_once: true
+
+  tasks:
+    # ==========================================================================
+    # Scenario 1: Producer Configuration Baseline
+    # ==========================================================================
+    - name: "Scenario 1: Producer Baseline Tests"
+      when: run_producer_baseline | bool
+      tags:
+        - producer
+        - baseline
+      block:
+        - name: Import producer baseline playbook
+          ansible.builtin.import_tasks: producer_baseline_tasks.yml
+
+    # ==========================================================================
+    # Scenario 2: Consumer Configuration Baseline
+    # ==========================================================================
+    - name: "Scenario 2: Consumer Baseline Tests"
+      when: run_consumer_baseline | bool
+      tags:
+        - consumer
+        - baseline
+      block:
+        - name: Import consumer baseline playbook
+          ansible.builtin.import_tasks: consumer_baseline_tasks.yml
+
+    # ==========================================================================
+    # Scenario 3: Load Scaling Tests
+    # ==========================================================================
+    - name: "Scenario 3: Load Scaling Tests"
+      when: run_load_scaling | bool
+      tags:
+        - scaling
+        - load
+      block:
+        - name: Import load scaling playbook
+          ansible.builtin.import_tasks: load_scaling_tasks.yml
+
+    # ==========================================================================
+    # Scenario 4: Message Size Impact
+    # ==========================================================================
+    - name: "Scenario 4: Message Size Tests"
+      when: run_message_size | bool
+      tags:
+        - message_size
+      block:
+        - name: Import message size playbook
+          ansible.builtin.import_tasks: message_size_tasks.yml
+
+    # ==========================================================================
+    # Scenario 5: Acknowledgment Trade-offs
+    # ==========================================================================
+    - name: "Scenario 5: Acknowledgment Trade-off Tests"
+      when: run_acks_tradeoff | bool
+      tags:
+        - acks
+        - tradeoff
+      block:
+        - name: Import acks tradeoff playbook
+          ansible.builtin.import_tasks: acks_tradeoff_tasks.yml
+
+  post_tasks:
+    # ==========================================================================
+    # Final Processing
+    # ==========================================================================
+    - name: Parse all test logs
+      ansible.builtin.include_role:
+        name: log_parser
+      vars:
+        parser_verbose: true
+      run_once: true
+      tags:
+        - parse
+        - report
+
+    - name: Generate comprehensive Excel report
+      ansible.builtin.include_role:
+        name: excel_generator
+      vars:
+        generator_verbose: true
+        report_filename: "kafka_full_benchmark_{{ test_run_timestamp | default(ansible_date_time.iso8601_basic_short) }}.xlsx"
+      when: generate_report | bool
+      run_once: true
+      tags:
+        - report
+
+    - name: Record benchmark end time
+      ansible.builtin.set_fact:
+        benchmark_end_time: "{{ ansible_date_time.iso8601 }}"
+      run_once: true
+
+    - name: Display benchmark summary
+      ansible.builtin.debug:
+        msg: |
+          ====================================================
+          KAFKA PERFORMANCE BENCHMARK COMPLETE
+          ====================================================
+
+          Duration: {{ benchmark_start_time }} to {{ benchmark_end_time }}
+
+          Scenarios Executed:
+            - Producer Baseline: {{ 'Yes' if run_producer_baseline else 'Skipped' }}
+            - Consumer Baseline: {{ 'Yes' if run_consumer_baseline else 'Skipped' }}
+            - Load Scaling:      {{ 'Yes' if run_load_scaling else 'Skipped' }}
+            - Message Size:      {{ 'Yes' if run_message_size else 'Skipped' }}
+            - Acks Trade-off:    {{ 'Yes' if run_acks_tradeoff else 'Skipped' }}
+
+          Results Location:
+            Raw Logs:    {{ results_base_dir | default('./results') }}/raw_logs/
+            Parsed Data: {{ results_base_dir | default('./results') }}/parsed_data/
+            Reports:     {{ results_base_dir | default('./results') }}/reports/
+
+          Next Steps:
+            1. Open the Excel report to view detailed analysis
+            2. Review the Recommendations sheet for optimization suggestions
+            3. Compare configurations in the Raw Data sheet
+
+          ====================================================
+      run_once: true
