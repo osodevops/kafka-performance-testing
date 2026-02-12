@@ -76,12 +76,12 @@ This starts:
 docker exec -it kafka-perf-test bash
 
 # Run a quick producer test
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/producer_baseline.yml
+ansible-playbook -i examples/inventory/local \
+  playbooks/producer_baseline.yml
 
 # Run full benchmark
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/full_benchmark.yml
+ansible-playbook -i examples/inventory/local \
+  playbooks/full_benchmark.yml
 ```
 
 ### 2.3 View Results
@@ -109,7 +109,7 @@ docker-compose down -v
 
 ### 3.1 Update Inventory
 
-Edit `inventories/dev/hosts.yml` with your broker details:
+Edit `examples/inventory/dev/hosts.yml` with your broker details:
 
 ```yaml
 all:
@@ -135,7 +135,7 @@ all:
 
 ### 3.2 Configure Authentication (Optional)
 
-For SSL/SASL clusters, add to `inventories/dev/group_vars/all/defaults.yml`:
+For SSL/SASL clusters, add to `examples/inventory/dev/group_vars/all/defaults.yml`:
 
 ```yaml
 ssl_enabled: true
@@ -147,13 +147,13 @@ kafka_password: "your-password"
 
 Test SSH connectivity:
 ```bash
-ansible -i inventories/dev all -m ping
+ansible -i examples/inventory/dev all -m ping
 ```
 
 Test Kafka connectivity:
 ```bash
-ansible-playbook -i inventories/dev \
-  ansible_collections/oso/test/playbooks/produce_consume.yml
+ansible-playbook -i examples/inventory/dev \
+  playbooks/produce_consume.yml
 ```
 
 ## 4. Run Your First Test
@@ -161,8 +161,8 @@ ansible-playbook -i inventories/dev \
 ### 4.1 Basic Connectivity Test
 
 ```bash
-ansible-playbook -i inventories/dev \
-  ansible_collections/oso/test/playbooks/produce_consume.yml
+ansible-playbook -i examples/inventory/dev \
+  playbooks/produce_consume.yml
 ```
 
 This creates a test topic, produces 10 messages, consumes them, and cleans up.
@@ -170,8 +170,8 @@ This creates a test topic, produces 10 messages, consumes them, and cleans up.
 ### 4.2 Simple Performance Test
 
 ```bash
-ansible-playbook -i inventories/dev \
-  ansible_collections/oso/test/playbooks/producer_baseline.yml
+ansible-playbook -i examples/inventory/dev \
+  playbooks/producer_baseline.yml
 ```
 
 Default quick profile runs with:
@@ -185,8 +185,8 @@ Default quick profile runs with:
 For comprehensive testing across all scenarios:
 
 ```bash
-ansible-playbook -i inventories/dev \
-  ansible_collections/oso/test/playbooks/full_benchmark.yml
+ansible-playbook -i examples/inventory/dev \
+  playbooks/full_benchmark.yml
 ```
 
 ## 5. Understanding the Results
@@ -239,7 +239,7 @@ Open `results/reports/kafka_perf_report_*.xlsx`:
 
 ### 6.1 Modify Test Parameters
 
-Edit `inventories/dev/group_vars/all/test_matrices.yml`:
+Edit `examples/inventory/dev/group_vars/all/test_matrices.yml`:
 
 ```yaml
 producer_test_matrix:
@@ -253,12 +253,12 @@ producer_test_matrix:
 
 ```bash
 # Only producer tests
-ansible-playbook -i inventories/dev \
-  ansible_collections/oso/test/playbooks/producer_baseline.yml
+ansible-playbook -i examples/inventory/dev \
+  playbooks/producer_baseline.yml
 
 # Only message size analysis
-ansible-playbook -i inventories/dev \
-  ansible_collections/oso/test/playbooks/message_size_tests.yml
+ansible-playbook -i examples/inventory/dev \
+  playbooks/message_size_tests.yml
 ```
 
 ### 6.3 Create Custom Test Matrices
@@ -266,8 +266,8 @@ ansible-playbook -i inventories/dev \
 Use extra vars to override defaults:
 
 ```bash
-ansible-playbook -i inventories/dev \
-  ansible_collections/oso/test/playbooks/producer_baseline.yml \
+ansible-playbook -i examples/inventory/dev \
+  playbooks/producer_baseline.yml \
   -e "test_profile=baseline" \
   -e "perf_num_records=5000000"
 ```
@@ -285,19 +285,19 @@ ansible-playbook -i inventories/dev \
 
 ```bash
 # Quick producer test
-ansible-playbook -i inventories/dev playbooks/producer_baseline.yml
+ansible-playbook -i examples/inventory/dev playbooks/producer_baseline.yml
 
 # Full benchmark
-ansible-playbook -i inventories/dev playbooks/full_benchmark.yml
+ansible-playbook -i examples/inventory/dev playbooks/full_benchmark.yml
 
 # Dry run (check mode)
-ansible-playbook -i inventories/dev playbooks/producer_baseline.yml --check
+ansible-playbook -i examples/inventory/dev playbooks/producer_baseline.yml --check
 
 # Verbose output
-ansible-playbook -i inventories/dev playbooks/producer_baseline.yml -v
+ansible-playbook -i examples/inventory/dev playbooks/producer_baseline.yml -v
 
 # Only parse logs (skip tests)
-ansible-playbook -i inventories/dev playbooks/full_benchmark.yml --tags parse,report
+ansible-playbook -i examples/inventory/dev playbooks/full_benchmark.yml --tags parse,report
 ```
 
 ### Directory Reference

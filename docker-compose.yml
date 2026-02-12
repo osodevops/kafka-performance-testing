@@ -157,8 +157,10 @@ services:
         condition: service_healthy
     volumes:
       - ./results:/app/results
-      - ./inventories:/app/inventories
-      - ./ansible_collections:/app/ansible_collections
+      - ./examples/inventory:/app/examples/inventory
+      - ./roles:/app/roles
+      - ./playbooks:/app/playbooks
+      - ./meta:/app/meta
       - ./scripts:/app/scripts
       - ./ansible.cfg:/app/ansible.cfg:ro
     environment:

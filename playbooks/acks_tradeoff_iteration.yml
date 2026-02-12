@@ -1,0 +1,20 @@
+---
+# Acks Trade-off Test - Iteration
+# Included by acks_tradeoff.yml
+
+- name: Setup test environment for RF={{ replication_factor }}
+  ansible.builtin.include_role:
+    name: setup_environment
+  vars:
+    perf_replication_factor: "{{ replication_factor }}"
+  run_once: true
+
+- name: "Run acks tests with replication factor {{ replication_factor }}"
+  ansible.builtin.include_role:
+    name: perf_producer
+  vars:
+    scenario_name: "acks{{ item }}_rf{{ replication_factor }}"
+    perf_acks: "{{ item }}"
+  loop: "{{ test_acks }}"
+  loop_control:
+    label: "acks={{ item }}, RF={{ replication_factor }}"

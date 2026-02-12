@@ -1,0 +1,48 @@
+---
+namespace: osodevops
+name: kafka_perf_testing
+version: 1.0.0
+readme: README.md
+authors:
+  - OSO DevOps <info@osodevops.io>
+description: Kafka performance testing and benchmarking with automated Excel reporting
+license:
+  - Apache-2.0
+license_file: LICENSE
+tags:
+  - kafka
+  - performance
+  - testing
+  - benchmarking
+  - streaming
+  - producer
+  - consumer
+  - tools
+dependencies:
+  community.general: ">=5.0.0"
+repository: https://github.com/osodevops/kafka-performance-testing
+documentation: https://github.com/osodevops/kafka-performance-testing/tree/main/docs
+homepage: https://github.com/osodevops/kafka-performance-testing
+issues: https://github.com/osodevops/kafka-performance-testing/issues
+build_ignore:
+  - .github
+  - .gitignore
+  - examples
+  - docs
+  - Makefile
+  - "*.tar.gz"
+  - docker-compose.yml
+  - Dockerfile
+  - ansible.cfg
+  - __pycache__
+  - venv
+  - results
+  - requirements.txt
+  - .vault_pass
+  - run_remaining_benchmarks.sh
+  - inventories
+  - .ansible-lint
+  - .yamllint
+  - .build-venv
+  - .claude
+  - CHANGELOG.md

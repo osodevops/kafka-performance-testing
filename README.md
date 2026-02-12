@@ -1,44 +1,63 @@
 # Kafka Performance Testing Automation
 
+[![Ansible Galaxy](https://img.shields.io/badge/galaxy-osodevops.kafka__perf__testing-blue.svg)](https://galaxy.ansible.com/ui/repo/published/osodevops/kafka_perf_testing/)
+[![CI](https://github.com/osodevops/kafka-performance-testing/actions/workflows/ci.yml/badge.svg)](https://github.com/osodevops/kafka-performance-testing/actions/workflows/ci.yml)
+
 Automated performance benchmarking for Apache Kafka with comprehensive Excel reporting and optimization recommendations.
 
 ## Features
 
 - **5 Comprehensive Test Scenarios** - Producer baseline, consumer baseline, load scaling, message size impact, acknowledgment trade-offs
 - **Automated Log Parsing** - Extracts metrics from kafka-producer-perf-test and kafka-consumer-perf-test output
-- **Excel Reports with Charts** - 8-sheet workbook with visualizations and recommendations
+- **Excel Reports with Charts** - 10-sheet workbook with 30+ visualizations and recommendations
 - **Parametrized Testing** - Configurable test matrices for systematic parameter exploration
 - **SSL/SASL Support** - Works with secured Kafka clusters
 - **Parallel Execution** - Run multiple producers/consumers concurrently
 
-## Quick Start
+## Installation
+
+### From Ansible Galaxy
+
+```bash
+ansible-galaxy collection install osodevops.kafka_perf_testing
+```
+
+### From Source
+
+```bash
+git clone https://github.com/osodevops/kafka-performance-testing.git
+cd kafka-performance-testing
+
+# Create virtual environment and install Python dependencies
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+### Python Requirements
+
+The log parsing and Excel report generation scripts require:
+
+- `openpyxl >= 3.1.0`
+- `pandas >= 2.0.0`
+- `numpy >= 1.24.0`
 
 ### Prerequisites
 
 - Python 3.8+
-- Ansible 2.10+
+- Ansible 2.15+
 - Access to a Kafka cluster
 - SSH access to test hosts (for remote execution)
 
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/osodevops/kafka-performance-testing.git
-cd kafka-performance-testing
-
-# Create virtual environment and install dependencies
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-```
+## Quick Start
 
 ### Configure Your Kafka Cluster
 
-Edit the inventory file with your broker details:
+Copy the example inventory and edit with your broker details:
 
 ```bash
-vi inventories/dev/hosts.yml
+cp -r examples/inventory/dev inventories/myenv
+vi inventories/myenv/hosts.yml
 ```
 
 ```yaml
@@ -65,12 +84,10 @@ all:
 
 ```bash
 # Quick producer baseline test
-ansible-playbook -i inventories/dev \
-  ansible_collections/oso/test/playbooks/producer_baseline.yml
+ansible-playbook -i inventories/myenv playbooks/producer_baseline.yml
 
 # Full benchmark suite
-ansible-playbook -i inventories/dev \
-  ansible_collections/oso/test/playbooks/full_benchmark.yml
+ansible-playbook -i inventories/myenv playbooks/full_benchmark.yml
 ```
 
 ### View Results
@@ -87,18 +104,18 @@ open results/reports/kafka_perf_report_*.xlsx
 
 | Scenario | Purpose | Playbook |
 |----------|---------|----------|
-| **Producer Baseline** | Optimize producer settings (acks, batch.size, linger.ms, compression) | `producer_baseline.yml` |
-| **Consumer Baseline** | Optimize consumer settings (fetch.min.bytes, max.poll.records) | `consumer_baseline.yml` |
-| **Load Scaling** | Measure performance with multiple producers/consumers | `load_scaling.yml` |
-| **Message Size** | Analyze throughput vs. message size relationship | `message_size_tests.yml` |
-| **Acks Trade-offs** | Quantify durability vs. performance impact | `acks_tradeoff.yml` |
-| **Full Benchmark** | Run all scenarios with comprehensive report | `full_benchmark.yml` |
+| **Producer Baseline** | Optimize producer settings (acks, batch.size, linger.ms, compression) | `playbooks/producer_baseline.yml` |
+| **Consumer Baseline** | Optimize consumer settings (fetch.min.bytes, max.poll.records) | `playbooks/consumer_baseline.yml` |
+| **Load Scaling** | Measure performance with multiple producers/consumers | `playbooks/load_scaling.yml` |
+| **Message Size** | Analyze throughput vs. message size relationship | `playbooks/message_size_tests.yml` |
+| **Acks Trade-offs** | Quantify durability vs. performance impact | `playbooks/acks_tradeoff.yml` |
+| **Full Benchmark** | Run all scenarios with comprehensive report | `playbooks/full_benchmark.yml` |
 
 ## Configuration
 
 ### Test Parameters
 
-Edit `inventories/dev/group_vars/all/test_matrices.yml` to customize:
+Edit `inventories/<env>/group_vars/all/test_matrices.yml` to customize:
 
 ```yaml
 producer_test_matrix:
@@ -160,20 +177,41 @@ docker build -t kafka-perf-testing .
 docker run -v $(pwd)/results:/app/results \
   -v $(pwd)/inventories:/app/inventories \
   kafka-perf-testing \
-  ansible-playbook -i inventories/dev \
-  ansible_collections/oso/test/playbooks/producer_baseline.yml
+  ansible-playbook -i inventories/myenv playbooks/producer_baseline.yml
 ```
 
-## Legacy Commands
+## Project Structure
 
-The following original collection commands are still available:
-
-```bash
-# Basic connectivity test
-ansible-playbook -i inventories/local oso.test.produce_consume
-
-# Simple performance test (original)
-ansible-playbook -i inventories/local oso.test.simple
+```
+kafka-performance-testing/
+├── galaxy.yml               # Ansible Galaxy collection metadata
+├── playbooks/               # Test scenario playbooks
+│   ├── full_benchmark.yml
+│   ├── producer_baseline.yml
+│   ├── consumer_baseline.yml
+│   └── ...
+├── roles/                   # Ansible roles
+│   ├── setup_environment/
+│   ├── perf_producer/
+│   ├── perf_consumer/
+│   ├── log_parser/
+│   ├── excel_generator/
+│   └── cleanup/
+├── scripts/                 # Python utilities
+│   ├── parse_perf_logs.py
+│   ├── generate_excel_report.py
+│   └── aggregate_results.py
+├── meta/                    # Collection metadata
+│   └── runtime.yml
+├── examples/                # Example inventories
+│   └── inventory/
+│       ├── dev/
+│       └── local/
+├── docs/                    # Documentation
+├── results/                 # Test outputs (gitignored)
+├── requirements.txt         # Python dependencies
+├── requirements.yml         # Galaxy collection dependencies
+└── Dockerfile               # Container build
 ```
 
 ## Documentation
@@ -187,41 +225,12 @@ ansible-playbook -i inventories/local oso.test.simple
 - [Test Scenarios](docs/SCENARIOS.md) - Detailed scenario descriptions
 - [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
 
-## Project Structure
-
-```
-kafka-performance-testing/
-├── ansible_collections/oso/test/
-│   ├── playbooks/           # Test scenario playbooks
-│   │   ├── full_benchmark.yml
-│   │   ├── producer_baseline.yml
-│   │   ├── consumer_baseline.yml
-│   │   └── ...
-│   └── roles/               # Ansible roles
-│       ├── setup_environment/
-│       ├── perf_producer/
-│       ├── perf_consumer/
-│       ├── log_parser/
-│       ├── excel_generator/
-│       └── cleanup/
-├── scripts/                 # Python utilities
-│   ├── parse_perf_logs.py
-│   ├── generate_excel_report.py
-│   └── aggregate_results.py
-├── inventories/             # Ansible inventories
-│   ├── dev/
-│   └── local/
-├── results/                 # Test outputs (gitignored)
-├── requirements.txt         # Python dependencies
-└── Dockerfile              # Container build
-```
-
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Run tests
+4. Run `make lint` to validate
 5. Submit a pull request
 
 ## License

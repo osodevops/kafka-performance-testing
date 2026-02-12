@@ -1,0 +1,131 @@
+---
+name: Release Collection
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag (e.g. v1.0.0)'
+        required: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          VERSION="${TAG#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Detected version: ${VERSION}"
+
+      - name: Verify galaxy.yml version matches tag
+        run: |
+          GALAXY_VERSION=$(grep '^version:' galaxy.yml | awk '{print $2}')
+          if [ "${GALAXY_VERSION}" != "${{ steps.version.outputs.version }}" ]; then
+            echo "ERROR: galaxy.yml version (${GALAXY_VERSION}) does not match tag (${{ steps.version.outputs.version }})"
+            exit 1
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install linting tools
+        run: |
+          pip install yamllint ansible-lint ansible-core
+
+      - name: Run yamllint
+        run: yamllint .
+
+      - name: Run ansible-lint
+        run: ansible-lint
+
+  build:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Ansible
+        run: pip install ansible-core
+
+      - name: Build collection
+        run: ansible-galaxy collection build --force
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: collection-tarball
+          path: osodevops-kafka_perf_testing-${{ needs.validate.outputs.version }}.tar.gz
+          retention-days: 5
+
+  publish-galaxy:
+    needs: [validate, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: collection-tarball
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Ansible
+        run: pip install ansible-core
+
+      - name: Publish to Ansible Galaxy
+        run: >-
+          ansible-galaxy collection publish
+          osodevops-kafka_perf_testing-${{ needs.validate.outputs.version }}.tar.gz
+          --api-key "${{ secrets.GALAXY_API_KEY }}"
+
+  github-release:
+    needs: [validate, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: collection-tarball
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.validate.outputs.version }}
+          name: Release v${{ needs.validate.outputs.version }}
+          body: |
+            ## Ansible Galaxy Collection
+
+            Install with:
+            ```
+            ansible-galaxy collection install osodevops.kafka_perf_testing:${{ needs.validate.outputs.version }}
+            ```
+          files: osodevops-kafka_perf_testing-${{ needs.validate.outputs.version }}.tar.gz
+          draft: false
+          prerelease: false

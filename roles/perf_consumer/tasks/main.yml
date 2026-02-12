@@ -1,0 +1,141 @@
+---
+# Consumer Performance Role - Main Tasks
+
+- name: Set consumer log filename
+  ansible.builtin.set_fact:
+    consumer_log_file: "consumer_{{ scenario_name }}_fetch{{ perf_fetch_min_bytes }}_poll{{ perf_max_poll_records }}_{{ test_run_timestamp | default(ansible_date_time.iso8601_basic_short) }}.log"
+  tags:
+    - consumer
+    - setup
+
+- name: Display consumer test configuration
+  ansible.builtin.debug:
+    msg: |
+      Consumer Test Configuration:
+        Scenario: {{ scenario_name }}
+        Topic: {{ perf_topic_name }}
+        Messages: {{ perf_num_messages }}
+        Consumer Group: {{ perf_consumer_group }}
+        fetch.min.bytes: {{ perf_fetch_min_bytes }}
+        fetch.max.wait.ms: {{ perf_fetch_max_wait_ms }}
+        max.poll.records: {{ perf_max_poll_records }}
+        receive.buffer.bytes: {{ perf_receive_buffer_bytes }}
+        Log File: {{ consumer_log_file }}
+  tags:
+    - consumer
+    - debug
+
+- name: Save consumer configuration file locally
+  ansible.builtin.copy:
+    dest: "{{ raw_logs_dir }}/consumer_{{ scenario_name }}.properties"
+    content: |
+      {% if ssl_enabled | bool %}
+      security.protocol=SASL_SSL
+      sasl.mechanism=PLAIN
+      ssl.endpoint.identification.algorithm=
+      sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required \
+      username="{{ kafka_user }}" \
+      password="{{ kafka_password }}";
+      {% endif %}
+      fetch.min.bytes={{ perf_fetch_min_bytes }}
+      fetch.max.wait.ms={{ perf_fetch_max_wait_ms }}
+      max.poll.records={{ perf_max_poll_records }}
+      receive.buffer.bytes={{ perf_receive_buffer_bytes }}
+    mode: '0640'
+  delegate_to: localhost
+  tags:
+    - consumer
+    - config
+
+- name: Create consumer configuration file on remote host
+  ansible.builtin.copy:
+    dest: "/tmp/consumer_{{ scenario_name }}.properties"
+    content: |
+      {% if ssl_enabled | bool %}
+      security.protocol=SASL_SSL
+      sasl.mechanism=PLAIN
+      ssl.endpoint.identification.algorithm=
+      sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required \
+      username="{{ kafka_user }}" \
+      password="{{ kafka_password }}";
+      {% endif %}
+      fetch.min.bytes={{ perf_fetch_min_bytes }}
+      fetch.max.wait.ms={{ perf_fetch_max_wait_ms }}
+      max.poll.records={{ perf_max_poll_records }}
+      receive.buffer.bytes={{ perf_receive_buffer_bytes }}
+    mode: '0640'
+  tags:
+    - consumer
+    - config
+
+- name: Execute consumer performance test (async)
+  ansible.builtin.shell: |
+    {{ binary_base_path }}/bin/kafka-consumer-perf-test.sh \
+      --bootstrap-server {{ kafka_broker.hosts | join(',') }} \
+      --topic {{ perf_topic_name }} \
+      --messages {{ perf_num_messages }} \
+      --group {{ perf_consumer_group }}-{{ ansible_date_time.epoch }} \
+      --timeout {{ perf_consumer_timeout }} \
+      --consumer.config /tmp/consumer_{{ scenario_name }}.properties \
+      --print-metrics 2>&1
+  register: consumer_output
+  async: "{{ consumer_async_timeout }}"
+  poll: "{{ consumer_poll_interval }}"
+  changed_when: false
+  tags:
+    - consumer
+    - execute
+
+- name: Wait for consumer completion
+  ansible.builtin.async_status:
+    jid: "{{ consumer_output.ansible_job_id }}"
+  register: consumer_result
+  until: consumer_result.finished
+  retries: "{{ (consumer_async_timeout / 10) | int }}"
+  delay: 10
+  when: consumer_poll_interval == 0
+  tags:
+    - consumer
+    - wait
+
+- name: Set consumer result for synchronous execution
+  ansible.builtin.set_fact:
+    consumer_result: "{{ consumer_output }}"
+  when: consumer_poll_interval != 0
+  tags:
+    - consumer
+
+- name: Display consumer test results summary
+  ansible.builtin.debug:
+    msg: |
+      Consumer Test Results:
+        {{ consumer_result.stdout_lines | default(['No output']) | select('search', 'MB.sec|nMsg.sec') | list | first | default('Results not available') }}
+  tags:
+    - consumer
+    - results
+
+- name: Save consumer output to log file
+  ansible.builtin.copy:
+    content: |
+      # Consumer Performance Test - {{ scenario_name }}
+      # Test Run: {{ test_run_timestamp | default(ansible_date_time.iso8601_basic_short) }}
+      # Configuration: fetch.min.bytes={{ perf_fetch_min_bytes }}, fetch.max.wait.ms={{ perf_fetch_max_wait_ms }}, max.poll.records={{ perf_max_poll_records }}
+      # Messages: {{ perf_num_messages }}
+      # Consumer Group: {{ perf_consumer_group }}
+      # Host: {{ inventory_hostname }}
+      # Date: {{ ansible_date_time.iso8601 }}
+      # Brokers: {{ kafka_broker.hosts | join(',') }}
+
+      {{ consumer_result.stdout | default('No output captured') }}
+    dest: "{{ raw_logs_dir }}/{{ consumer_log_file }}"
+    mode: '0644'
+  delegate_to: localhost
+  tags:
+    - consumer
+    - logging
+
+- name: Register consumer test completion
+  ansible.builtin.set_fact:
+    consumer_tests_completed: "{{ consumer_tests_completed | default([]) + [consumer_log_file] }}"
+  tags:
+    - consumer

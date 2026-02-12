@@ -1,0 +1,21 @@
+---
+# Excel Generator Role - Default Variables
+
+# Script paths
+scripts_dir: "{{ playbook_dir }}/../scripts"
+excel_script: "{{ scripts_dir }}/generate_excel_report.py"
+
+# Python configuration
+python_executable: "python3"
+python_venv: "{{ playbook_dir }}/../venv"
+use_venv: true
+
+# Input/Output (inherited from setup_environment)
+# parsed_data_dir: "{{ results_base_dir }}/parsed_data"
+# reports_dir: "{{ results_base_dir }}/reports"
+
+# Report naming
+report_filename: "kafka_perf_report_{{ test_run_timestamp | default(ansible_date_time.iso8601_basic_short) }}.xlsx"
+
+# Generator options
+generator_verbose: false

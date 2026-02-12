@@ -93,8 +93,8 @@ docker exec kafka-broker-1 kafka-broker-api-versions --bootstrap-server localhos
 docker exec -it kafka-perf-test bash
 
 # Inside the container, run a quick producer baseline test
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/producer_baseline.yml
+ansible-playbook -i examples/inventory/local \
+  playbooks/producer_baseline.yml
 
 # This will:
 # 1. Create test topics
@@ -136,7 +136,7 @@ For testing production or staging Kafka clusters.
 
 ### Step 1: Configure Inventory
 
-Create or edit `inventories/dev/hosts.yml`:
+Create or edit `examples/inventory/dev/hosts.yml`:
 
 ```yaml
 all:
@@ -172,7 +172,7 @@ all:
 
 ### Step 2: Configure Authentication (If Required)
 
-For SSL/SASL clusters, edit `inventories/dev/group_vars/all/security.yml`:
+For SSL/SASL clusters, edit `examples/inventory/dev/group_vars/all/security.yml`:
 
 ```yaml
 # SSL Configuration
@@ -191,23 +191,23 @@ sasl_password: "your-password"
 
 ```bash
 # Test SSH connectivity
-ansible -i inventories/dev all -m ping
+ansible -i examples/inventory/dev all -m ping
 
 # Test Kafka connectivity with a simple produce/consume
-ansible-playbook -i inventories/dev \
-  ansible_collections/oso/test/playbooks/produce_consume.yml
+ansible-playbook -i examples/inventory/dev \
+  playbooks/produce_consume.yml
 ```
 
 ### Step 4: Run Tests
 
 ```bash
 # Run producer baseline tests
-ansible-playbook -i inventories/dev \
-  ansible_collections/oso/test/playbooks/producer_baseline.yml
+ansible-playbook -i examples/inventory/dev \
+  playbooks/producer_baseline.yml
 
 # Or run the full benchmark suite
-ansible-playbook -i inventories/dev \
-  ansible_collections/oso/test/playbooks/full_benchmark.yml
+ansible-playbook -i examples/inventory/dev \
+  playbooks/full_benchmark.yml
 ```
 
 ---
@@ -229,42 +229,42 @@ ansible-playbook -i inventories/dev \
 
 ```bash
 # Producer Baseline - Test different producer configurations
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/producer_baseline.yml
+ansible-playbook -i examples/inventory/local \
+  playbooks/producer_baseline.yml
 
 # Consumer Baseline - Test different consumer configurations
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/consumer_baseline.yml
+ansible-playbook -i examples/inventory/local \
+  playbooks/consumer_baseline.yml
 
 # Load Scaling - Test with multiple producers/consumers
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/load_scaling.yml
+ansible-playbook -i examples/inventory/local \
+  playbooks/load_scaling.yml
 
 # Message Size - Test different message sizes
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/message_size_tests.yml
+ansible-playbook -i examples/inventory/local \
+  playbooks/message_size_tests.yml
 
 # Acks Trade-off - Compare acks=0, acks=1, acks=all
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/acks_tradeoff.yml
+ansible-playbook -i examples/inventory/local \
+  playbooks/acks_tradeoff.yml
 ```
 
 ### Running the Full Benchmark
 
 ```bash
 # Full benchmark with quick profile (faster, fewer combinations)
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/full_benchmark.yml \
+ansible-playbook -i examples/inventory/local \
+  playbooks/full_benchmark.yml \
   -e "test_profile=quick"
 
 # Full benchmark with baseline profile (comprehensive)
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/full_benchmark.yml \
+ansible-playbook -i examples/inventory/local \
+  playbooks/full_benchmark.yml \
   -e "test_profile=baseline"
 
 # Run only specific scenarios
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/full_benchmark.yml \
+ansible-playbook -i examples/inventory/local \
+  playbooks/full_benchmark.yml \
   -e "run_producer_baseline=true" \
   -e "run_consumer_baseline=false" \
   -e "run_load_scaling=false" \
@@ -276,18 +276,18 @@ ansible-playbook -i inventories/local \
 
 ```bash
 # Run only producer tests
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/full_benchmark.yml \
+ansible-playbook -i examples/inventory/local \
+  playbooks/full_benchmark.yml \
   --tags producer
 
 # Run only report generation (skip tests)
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/full_benchmark.yml \
+ansible-playbook -i examples/inventory/local \
+  playbooks/full_benchmark.yml \
   --tags report
 
 # Run tests but skip report
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/full_benchmark.yml \
+ansible-playbook -i examples/inventory/local \
+  playbooks/full_benchmark.yml \
   --skip-tags report
 ```
 
@@ -311,19 +311,19 @@ Two built-in profiles are available:
 
 ```bash
 # Use quick profile (default)
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/producer_baseline.yml \
+ansible-playbook -i examples/inventory/local \
+  playbooks/producer_baseline.yml \
   -e "test_profile=quick"
 
 # Use baseline profile
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/producer_baseline.yml \
+ansible-playbook -i examples/inventory/local \
+  playbooks/producer_baseline.yml \
   -e "test_profile=baseline"
 ```
 
 ### Modifying Test Parameters
 
-Edit `inventories/dev/group_vars/all/test_matrices.yml`:
+Edit `examples/inventory/dev/group_vars/all/test_matrices.yml`:
 
 ```yaml
 # Producer test configurations
@@ -356,13 +356,13 @@ perf_defaults:
 
 ```bash
 # Override number of records
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/producer_baseline.yml \
+ansible-playbook -i examples/inventory/local \
+  playbooks/producer_baseline.yml \
   -e "perf_num_records=5000000"
 
 # Override multiple parameters
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/producer_baseline.yml \
+ansible-playbook -i examples/inventory/local \
+  playbooks/producer_baseline.yml \
   -e "perf_num_records=2000000" \
   -e "perf_record_size=2048" \
   -e "test_profile=baseline"
@@ -440,8 +440,8 @@ docker-compose up -d
 docker exec -it kafka-perf-test bash
 
 # Run minimal test
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/producer_baseline.yml \
+ansible-playbook -i examples/inventory/local \
+  playbooks/producer_baseline.yml \
   -e "test_profile=quick" \
   -e "perf_num_records=100000"
 
@@ -455,8 +455,8 @@ Comprehensive testing for production cluster:
 
 ```bash
 # Run full baseline (2+ hours)
-ansible-playbook -i inventories/dev \
-  ansible_collections/oso/test/playbooks/full_benchmark.yml \
+ansible-playbook -i examples/inventory/dev \
+  playbooks/full_benchmark.yml \
   -e "test_profile=baseline"
 
 # View detailed report
@@ -469,8 +469,8 @@ Test cluster before and after a configuration change:
 
 ```bash
 # Run baseline tests BEFORE change
-ansible-playbook -i inventories/dev \
-  ansible_collections/oso/test/playbooks/producer_baseline.yml
+ansible-playbook -i examples/inventory/dev \
+  playbooks/producer_baseline.yml
 
 # Rename results
 mv results/reports/kafka_perf_report_*.xlsx results/reports/BEFORE_change.xlsx
@@ -478,8 +478,8 @@ mv results/reports/kafka_perf_report_*.xlsx results/reports/BEFORE_change.xlsx
 # Make your Kafka configuration changes...
 
 # Run baseline tests AFTER change
-ansible-playbook -i inventories/dev \
-  ansible_collections/oso/test/playbooks/producer_baseline.yml
+ansible-playbook -i examples/inventory/dev \
+  playbooks/producer_baseline.yml
 
 # Rename results
 mv results/reports/kafka_perf_report_*.xlsx results/reports/AFTER_change.xlsx
@@ -493,16 +493,16 @@ Test specific configuration combinations:
 
 ```bash
 # Test only acks settings
-ansible-playbook -i inventories/dev \
-  ansible_collections/oso/test/playbooks/acks_tradeoff.yml
+ansible-playbook -i examples/inventory/dev \
+  playbooks/acks_tradeoff.yml
 
 # Test only message sizes
-ansible-playbook -i inventories/dev \
-  ansible_collections/oso/test/playbooks/message_size_tests.yml
+ansible-playbook -i examples/inventory/dev \
+  playbooks/message_size_tests.yml
 
 # Test producer scaling only
-ansible-playbook -i inventories/dev \
-  ansible_collections/oso/test/playbooks/load_scaling.yml
+ansible-playbook -i examples/inventory/dev \
+  playbooks/load_scaling.yml
 ```
 
 ### Workflow 5: Iterative Optimization
@@ -511,8 +511,8 @@ Find optimal configuration through iteration:
 
 ```bash
 # Step 1: Run quick baseline
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/full_benchmark.yml \
+ansible-playbook -i examples/inventory/local \
+  playbooks/full_benchmark.yml \
   -e "test_profile=quick"
 
 # Step 2: Review recommendations sheet
@@ -522,8 +522,8 @@ ansible-playbook -i inventories/local \
 # Focus on promising parameter values
 
 # Step 4: Run targeted tests
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/producer_baseline.yml \
+ansible-playbook -i examples/inventory/local \
+  playbooks/producer_baseline.yml \
   -e "test_profile=baseline"
 
 # Step 5: Repeat until optimal configuration found
@@ -574,13 +574,13 @@ python scripts/generate_excel_report.py \
 
 ```bash
 # Reduce number of records for faster tests
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/producer_baseline.yml \
+ansible-playbook -i examples/inventory/local \
+  playbooks/producer_baseline.yml \
   -e "perf_num_records=500000"
 
 # Use quick profile
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/full_benchmark.yml \
+ansible-playbook -i examples/inventory/local \
+  playbooks/full_benchmark.yml \
   -e "test_profile=quick"
 ```
 
@@ -604,13 +604,13 @@ docker-compose logs kafka-perf-test
 ansible-playbook --help
 
 # Dry run (check mode)
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/producer_baseline.yml \
+ansible-playbook -i examples/inventory/local \
+  playbooks/producer_baseline.yml \
   --check
 
 # Verbose output
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/producer_baseline.yml \
+ansible-playbook -i examples/inventory/local \
+  playbooks/producer_baseline.yml \
   -vvv
 ```
 
@@ -628,12 +628,12 @@ docker-compose up -d
 docker exec -it kafka-perf-test bash
 
 # Run quick producer test
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/producer_baseline.yml
+ansible-playbook -i examples/inventory/local \
+  playbooks/producer_baseline.yml
 
 # Run full benchmark
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/full_benchmark.yml
+ansible-playbook -i examples/inventory/local \
+  playbooks/full_benchmark.yml
 
 # View results
 open results/reports/kafka_perf_report_*.xlsx
@@ -646,8 +646,8 @@ docker-compose down
 
 ```
 kafka-performance-testing/
-├── ansible_collections/oso/test/playbooks/  # Test playbooks
-├── inventories/
+├── playbooks/                                # Test playbooks
+├── examples/inventory/
 │   ├── local/                               # Local Docker inventory
 │   └── dev/                                 # Remote cluster inventory
 ├── results/

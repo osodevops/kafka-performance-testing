@@ -6,7 +6,7 @@ Complete reference for all configuration variables and options.
 
 ### Host Variables
 
-Define in `inventories/dev/hosts.yml`:
+Define in `examples/inventory/dev/hosts.yml`:
 
 ```yaml
 all:
@@ -18,7 +18,7 @@ all:
 
 ### Group Variables
 
-Define in `inventories/dev/group_vars/all/`:
+Define in `examples/inventory/dev/group_vars/all/`:
 
 #### Connection Settings (`default.yml`)
 

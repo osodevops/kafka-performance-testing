@@ -87,9 +87,10 @@ kafka-performance-testing/
 │   ├── *.whl                  # Python wheel files
 │   ├── *.tar.gz               # Python source packages
 │   └── *.tar                  # Docker images (if using Docker)
-├── ansible_collections/       # Ansible playbooks and roles
+├── playbooks/                 # Test playbooks
+├── roles/                     # Ansible roles
 ├── scripts/                   # Python scripts
-├── inventories/               # Ansible inventories
+├── examples/inventory/        # Example Ansible inventories
 ├── requirements.txt           # Python requirements
 ├── docker-compose.yml         # Docker Compose config
 └── ...                        # Other project files
@@ -166,7 +167,7 @@ Configure your inventory to point to your Kafka cluster:
 
 ```bash
 # Edit inventory
-vi inventories/dev/hosts.yml
+vi examples/inventory/dev/hosts.yml
 ```
 
 ```yaml
@@ -186,8 +187,8 @@ all:
 Run tests:
 
 ```bash
-ansible-playbook -i inventories/dev \
-  ansible_collections/oso/test/playbooks/producer_baseline.yml
+ansible-playbook -i examples/inventory/dev \
+  playbooks/producer_baseline.yml
 ```
 
 ### Option B: Using Local Docker Cluster
@@ -202,8 +203,8 @@ docker-compose up -d
 docker exec -it kafka-perf-test bash
 
 # Run tests
-ansible-playbook -i inventories/local \
-  ansible_collections/oso/test/playbooks/producer_baseline.yml
+ansible-playbook -i examples/inventory/local \
+  playbooks/producer_baseline.yml
 ```
 
 ---
@@ -299,6 +300,6 @@ pip install --no-index --find-links=offline_packages/ -r requirements.txt
 python -c "import openpyxl, pandas; print('OK')"
 
 # Run tests
-ansible-playbook -i inventories/dev \
-  ansible_collections/oso/test/playbooks/producer_baseline.yml
+ansible-playbook -i examples/inventory/dev \
+  playbooks/producer_baseline.yml
 ```

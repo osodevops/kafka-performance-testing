@@ -1,0 +1,12 @@
+---
+# Scaling Test - Producer Iteration
+# Included by load_scaling.yml
+
+- name: "Run {{ num_producers }} producer(s) test"
+  ansible.builtin.include_role:
+    name: perf_producer
+  vars:
+    scenario_name: "scaling_{{ num_producers }}prod"
+  loop: "{{ range(1, num_producers | int + 1) | list }}"
+  loop_control:
+    label: "Producer {{ item }} of {{ num_producers }}"

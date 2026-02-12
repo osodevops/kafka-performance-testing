@@ -245,10 +245,10 @@ Producer metrics line:
 
 ```
 1. Role defaults (lowest priority)
-   └── ansible_collections/oso/test/roles/*/defaults/main.yml
+   └── roles/*/defaults/main.yml
 
 2. Inventory group_vars
-   └── inventories/dev/group_vars/all/*.yml
+   └── examples/inventory/dev/group_vars/all/*.yml
 
 3. Playbook vars
    └── vars: section in playbook

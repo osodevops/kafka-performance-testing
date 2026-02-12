@@ -6,17 +6,17 @@ Common issues and solutions when running Kafka performance tests.
 
 ```bash
 # Check Ansible connectivity
-ansible -i inventories/dev all -m ping
+ansible -i examples/inventory/dev all -m ping
 
 # Verify Kafka tools
-ansible -i inventories/dev all -m shell -a "ls /usr/local/bin/kafka-*"
+ansible -i examples/inventory/dev all -m shell -a "ls /usr/local/bin/kafka-*"
 
 # Check Python environment
 source venv/bin/activate
 python -c "import openpyxl, pandas, numpy; print('OK')"
 
 # Dry run a playbook
-ansible-playbook -i inventories/dev playbooks/producer_baseline.yml --check
+ansible-playbook -i examples/inventory/dev playbooks/producer_baseline.yml --check
 ```
 
 ---
@@ -38,7 +38,7 @@ UNREACHABLE! => {"changed": false, "msg": "Failed to connect to the host via ssh
 
 2. Check inventory:
    ```yaml
-   # inventories/dev/hosts.yml
+   # examples/inventory/dev/hosts.yml
    kafka-broker-1:
      ansible_host: correct-hostname.example.com
      ansible_user: correct-user

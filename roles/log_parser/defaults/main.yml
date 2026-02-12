@@ -1,0 +1,19 @@
+---
+# Log Parser Role - Default Variables
+
+# Script paths
+scripts_dir: "{{ playbook_dir }}/../scripts"
+parse_script: "{{ scripts_dir }}/parse_perf_logs.py"
+
+# Python configuration
+python_executable: "python3"
+python_venv: "{{ playbook_dir }}/../venv"
+use_venv: true
+
+# Input/Output directories (inherited from setup_environment)
+# raw_logs_dir: "{{ results_base_dir }}/raw_logs"
+# parsed_data_dir: "{{ results_base_dir }}/parsed_data"
+
+# Parser options
+parser_verbose: false
+parser_individual_files: false

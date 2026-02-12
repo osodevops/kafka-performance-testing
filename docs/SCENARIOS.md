@@ -41,14 +41,14 @@ Identify optimal producer settings for maximum throughput and/or minimum latency
 
 ```bash
 # Quick profile (subset of configs)
-ansible-playbook -i inventories/dev playbooks/producer_baseline.yml
+ansible-playbook -i examples/inventory/dev playbooks/producer_baseline.yml
 
 # Full baseline (all combinations)
-ansible-playbook -i inventories/dev playbooks/producer_baseline.yml \
+ansible-playbook -i examples/inventory/dev playbooks/producer_baseline.yml \
   -e "test_profile=baseline"
 
 # Custom configuration
-ansible-playbook -i inventories/dev playbooks/producer_baseline.yml \
+ansible-playbook -i examples/inventory/dev playbooks/producer_baseline.yml \
   -e '{"test_acks": ["1", "all"], "test_batch_sizes": [16384, 32768]}'
 ```
 
@@ -86,10 +86,10 @@ Identify optimal consumer settings for maximum consumption throughput.
 
 ```bash
 # Quick profile
-ansible-playbook -i inventories/dev playbooks/consumer_baseline.yml
+ansible-playbook -i examples/inventory/dev playbooks/consumer_baseline.yml
 
 # Full baseline
-ansible-playbook -i inventories/dev playbooks/consumer_baseline.yml \
+ansible-playbook -i examples/inventory/dev playbooks/consumer_baseline.yml \
   -e "test_profile=baseline"
 ```
 
@@ -124,10 +124,10 @@ Measure performance degradation with multiple concurrent producers/consumers.
 
 ```bash
 # Default scaling test
-ansible-playbook -i inventories/dev playbooks/load_scaling.yml
+ansible-playbook -i examples/inventory/dev playbooks/load_scaling.yml
 
 # Custom producer count
-ansible-playbook -i inventories/dev playbooks/load_scaling.yml \
+ansible-playbook -i examples/inventory/dev playbooks/load_scaling.yml \
   -e '{"scaling_num_producers": [1, 5, 10, 20]}'
 ```
 
@@ -169,10 +169,10 @@ Understand the relationship between message size and performance.
 
 ```bash
 # Default message sizes
-ansible-playbook -i inventories/dev playbooks/message_size_tests.yml
+ansible-playbook -i examples/inventory/dev playbooks/message_size_tests.yml
 
 # Custom sizes
-ansible-playbook -i inventories/dev playbooks/message_size_tests.yml \
+ansible-playbook -i examples/inventory/dev playbooks/message_size_tests.yml \
   -e '{"test_record_sizes": [256, 1024, 4096, 16384, 65536]}'
 ```
 
@@ -215,10 +215,10 @@ Quantify the durability vs. performance trade-off of different acks settings.
 
 ```bash
 # Default acks test
-ansible-playbook -i inventories/dev playbooks/acks_tradeoff.yml
+ansible-playbook -i examples/inventory/dev playbooks/acks_tradeoff.yml
 
 # Specific acks values
-ansible-playbook -i inventories/dev playbooks/acks_tradeoff.yml \
+ansible-playbook -i examples/inventory/dev playbooks/acks_tradeoff.yml \
   -e '{"test_acks": ["1", "all"]}'
 ```
 
@@ -248,10 +248,10 @@ Run all scenarios and generate comprehensive report.
 
 ```bash
 # Full benchmark with all scenarios
-ansible-playbook -i inventories/dev playbooks/full_benchmark.yml
+ansible-playbook -i examples/inventory/dev playbooks/full_benchmark.yml
 
 # Selective scenarios
-ansible-playbook -i inventories/dev playbooks/full_benchmark.yml \
+ansible-playbook -i examples/inventory/dev playbooks/full_benchmark.yml \
   -e "run_producer_baseline=true" \
   -e "run_consumer_baseline=true" \
   -e "run_load_scaling=false" \
@@ -259,7 +259,7 @@ ansible-playbook -i inventories/dev playbooks/full_benchmark.yml \
   -e "run_acks_tradeoff=false"
 
 # Using tags
-ansible-playbook -i inventories/dev playbooks/full_benchmark.yml \
+ansible-playbook -i examples/inventory/dev playbooks/full_benchmark.yml \
   --tags "producer,consumer"
 ```
 
@@ -306,5 +306,5 @@ my_scenario_matrix:
 
 3. Run:
 ```bash
-ansible-playbook -i inventories/dev playbooks/my_scenario.yml
+ansible-playbook -i examples/inventory/dev playbooks/my_scenario.yml
 ```

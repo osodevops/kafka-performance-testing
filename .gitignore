@@ -72,3 +72,17 @@ vault.yml
 
 # Offline packages (downloaded for air-gapped installation)
 offline_packages/
+
+# Collection build artifacts
+*.tar.gz
+.build-venv/
+.ansible/
+
+# Vault password file
+.vault_pass
+
+# Production inventory (contains vault secrets)
+inventories/production/
+
+# Benchmark scripts
+run_remaining_benchmarks.sh

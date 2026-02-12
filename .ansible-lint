@@ -1,0 +1,26 @@
+---
+exclude_paths:
+  - examples/
+  - docs/
+  - scripts/
+  - .github/
+  - .build-venv/
+  - inventories/
+  - roles/tests/
+  - playbooks/scenario1_p1_c3.yml
+  - playbooks/simple.yml
+  - playbooks/all.yml
+  - playbooks/produce_consume.yml
+  - playbooks/*_tasks.yml
+  - playbooks/*_iteration.yml
+
+skip_list:
+  - var-naming[no-role-prefix]
+  - yaml[line-length]
+  - yaml[document-start]
+  - run-once[task]
+
+warn_list:
+  - no-changed-when
+  - no-handler
+  - risky-file-permissions

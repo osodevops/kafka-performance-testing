@@ -1,0 +1,31 @@
+---
+galaxy_info:
+  role_name: perf_producer
+  author: OSO
+  description: Execute Kafka producer performance tests
+  company: OSO DevOps
+  license: Apache-2.0
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+        - noble
+    - name: EL
+      versions:
+        - "8"
+        - "9"
+    - name: Debian
+      versions:
+        - bullseye
+        - bookworm
+  galaxy_tags:
+    - kafka
+    - performance
+    - testing
+    - producer
+
+dependencies:
+  - role: setup_environment
+    when: setup_complete is not defined

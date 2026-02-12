@@ -1,0 +1,35 @@
+---
+# Setup Environment Role - Default Variables
+
+# Kafka installation paths
+kafka_home: "/usr/local"
+binary_base_path: "{{ kafka_home }}"
+
+# Kafka broker connection
+kafka_broker:
+  hosts:
+    - "localhost:9092"
+
+# Topic configuration
+perf_topic_name: "perf-test"
+perf_topic_partitions: 12
+perf_replication_factor: 3
+
+# Results directory structure
+results_base_dir: "{{ playbook_dir }}/../results"
+raw_logs_dir: "{{ results_base_dir }}/raw_logs"
+parsed_data_dir: "{{ results_base_dir }}/parsed_data"
+reports_dir: "{{ results_base_dir }}/reports"
+
+# SSL/SASL configuration
+ssl_enabled: false
+kafka_user: ""
+kafka_password: ""
+perf_truststore_password: ""
+perf_keystore_password: ""
+perf_tmp_ssl_location: "/tmp/var/ssl/ansible"
+
+# Timeouts
+kafka_topic_create_timeout: 30
+kafka_topic_create_retries: 5
+kafka_topic_create_delay: 5
