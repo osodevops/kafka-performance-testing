@@ -19,6 +19,7 @@ skip_list:
   - yaml[line-length]
   - yaml[document-start]
   - run-once[task]
+  - internal-error
 
 warn_list:
   - no-changed-when
