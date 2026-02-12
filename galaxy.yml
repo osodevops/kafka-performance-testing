@@ -6,8 +6,6 @@ readme: README.md
 authors:
   - OSO DevOps <info@osodevops.io>
 description: Kafka performance testing and benchmarking with automated Excel reporting
-license:
-  - Apache-2.0
 license_file: LICENSE
 tags:
   - kafka
